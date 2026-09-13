@@ -1,7 +1,17 @@
 export type PhotoFilter = "natural" | "bw" | "sepia" | "vintage";
-export type RevealEffect = "polaroid" | "camera";
-export type Wallpaper = "wood" | "crumpled" | "dark" | "pink";
-export type ViewMode = "deck" | "album" | "slideshow";
+export type RevealEffect = "polaroid" | "camera" | "hearts" | "fade" | "letter";
+export type Wallpaper =
+  | "wood"
+  | "crumpled"
+  | "dark"
+  | "pink"
+  | "linen"
+  | "night"
+  | "garden"
+  | "film"
+  | "ocean"
+  | "gold";
+export type ViewMode = "deck" | "album" | "slideshow" | "board";
 export type SoundtrackType = "url" | "upload" | "spotify" | "youtube";
 
 export type PhotoRecord = {
@@ -60,12 +70,47 @@ export const WALLPAPERS: { id: Wallpaper; label: string }[] = [
   { id: "crumpled", label: "Papel amassado" },
   { id: "dark", label: "Minimalista escuro" },
   { id: "pink", label: "Rosa suave" },
+  { id: "linen", label: "Linho claro" },
+  { id: "night", label: "Céu noturno" },
+  { id: "garden", label: "Jardim" },
+  { id: "film", label: "Cinema" },
+  { id: "ocean", label: "Mar" },
+  { id: "gold", label: "Dourado vintage" },
+];
+
+export const REVEAL_EFFECTS: { id: RevealEffect; title: string; text: string }[] = [
+  {
+    id: "polaroid",
+    title: "Revelação Polaroid",
+    text: "A foto nasce branca e desfocada, como um papel instantâneo.",
+  },
+  {
+    id: "camera",
+    title: "Flash da câmera",
+    text: "Um flash e o clique do obturador a cada troca de foto.",
+  },
+  {
+    id: "hearts",
+    title: "Chuva de corações",
+    text: "Corações caem pela tela quando o envelope abre.",
+  },
+  {
+    id: "fade",
+    title: "Surgir suave",
+    text: "As memórias aparecem devagar, como um suspiro.",
+  },
+  {
+    id: "letter",
+    title: "Carta que se abre",
+    text: "A polaroid sobe de um papel dobrado, como uma carta.",
+  },
 ];
 
 export const VIEW_MODES: { id: ViewMode; label: string; hint: string }[] = [
   { id: "deck", label: "Mesa", hint: "Fotos espalhadas para arrastar" },
   { id: "album", label: "Álbum", hint: "Rolagem com parallax" },
   { id: "slideshow", label: "Apresentação", hint: "Troca automática" },
+  { id: "board", label: "Quadro", hint: "Um pôster com todas as fotos para baixar" },
 ];
 
 export const FILTER_CLASS: Record<PhotoFilter, string> = {

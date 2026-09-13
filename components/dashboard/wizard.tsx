@@ -25,6 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { formatLastSeen } from "@/lib/dates";
 import { classifySoundtrack } from "@/lib/soundtrack";
 import {
+  REVEAL_EFFECTS,
   VIEW_MODES,
   WALLPAPERS,
   type DeclarationRecord,
@@ -255,7 +256,7 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+    <div className="mx-auto w-full max-w-6xl overflow-x-hidden px-4 py-8 sm:px-6">
       <div className="mb-8">
         <p className="font-hand text-2xl text-rose">estúdio</p>
         <h1 className="text-3xl font-semibold text-graphite">
@@ -359,22 +360,17 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
         <section className="grid gap-6 lg:grid-cols-2">
           <div className="neu-card space-y-4 rounded-3xl p-6">
             <h2 className="text-lg font-semibold">Efeito ao abrir o link</h2>
-            <Choice
-              active={record.revealEffect === "polaroid"}
-              title="Efeito revelação"
-              text="A foto nasce branca e desfocada, como um papel Polaroid real."
-              onClick={() =>
-                setRecord((current) => ({ ...current, revealEffect: "polaroid" as RevealEffect }))
-              }
-            />
-            <Choice
-              active={record.revealEffect === "camera"}
-              title="Efeito câmera"
-              text="Um flash e o clique do obturador a cada troca de foto."
-              onClick={() =>
-                setRecord((current) => ({ ...current, revealEffect: "camera" as RevealEffect }))
-              }
-            />
+            {REVEAL_EFFECTS.map((effect) => (
+              <Choice
+                key={effect.id}
+                active={record.revealEffect === effect.id}
+                title={effect.title}
+                text={effect.text}
+                onClick={() =>
+                  setRecord((current) => ({ ...current, revealEffect: effect.id as RevealEffect }))
+                }
+              />
+            ))}
             <h2 className="pt-2 text-lg font-semibold">Modo de exibição</h2>
             <div className="grid gap-2">
               {VIEW_MODES.map((mode) => (
@@ -407,7 +403,7 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
           </div>
           <div className="neu-card space-y-4 rounded-3xl p-6">
             <h2 className="text-lg font-semibold">Papel de parede</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {WALLPAPERS.map((paper) => (
                 <button
                   key={paper.id}

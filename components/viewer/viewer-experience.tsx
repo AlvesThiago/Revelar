@@ -8,12 +8,15 @@ import { recordViewAction, sendReplyAction } from "@/app/actions/declarations";
 import { HeartConfetti } from "@/components/heart-confetti";
 import { LiveCounter } from "@/components/live-counter";
 import { PolaroidCard } from "@/components/polaroid-card";
+import { PhotoBoard } from "@/components/viewer/photo-board";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { fadeAudio, playShutter } from "@/lib/shutter";
 import { classifySoundtrack } from "@/lib/soundtrack";
-import { VIEW_MODES, type PublicDeclaration, type ViewMode } from "@/lib/types";
+import { VIEW_MODES, type PublicDeclaration, type RevealEffect, type ViewMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+const PHOTO_REVEALS = new Set<RevealEffect>(["polaroid", "fade", "letter"]);
 
 const ROTATIONS = [-7, 4, -2, 6, -5, 3, -3, 5, -6, 2, -4, 7];
 
@@ -89,14 +92,51 @@ export function ViewerExperience({
   async function downloadAlbum() {
     const cards = document.querySelectorAll<HTMLElement>("[data-polaroid]");
     if (cards.length === 0) return;
-    let n = 1;
-    for (const card of Array.from(cards)) {
-      const url = await toPng(card, { pixelRatio: 2, cacheBust: true });
+    try {
+      let n = 1;
+      for (const card of Array.from(cards)) {
+        const url = await toPng(card, { pixelRatio: 2, cacheBust: true });
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${declaration.slug}-polaroid-${n}.png`;
+        link.click();
+        n += 1;
+      }
+    } catch {
+      setReplyState("Não deu para baixar as polaroids agora. Tente outra vez.");
+    }
+  }
+
+  async function downloadBoard() {
+    if (mode !== "board") setMode("board");
+    await new Promise<void>((resolve) => {
+      const started = performance.now();
+      const wait = () => {
+        if (document.querySelector("[data-photo-board]") || performance.now() - started > 2000) {
+          resolve();
+          return;
+        }
+        window.requestAnimationFrame(wait);
+      };
+      window.requestAnimationFrame(wait);
+    });
+    const board = document.querySelector<HTMLElement>("[data-photo-board]");
+    if (!board) {
+      setReplyState("O quadro ainda está montando. Tente outra vez.");
+      return;
+    }
+    try {
+      const url = await toPng(board, {
+        pixelRatio: 2,
+        cacheBust: true,
+        backgroundColor: "#5a321c",
+      });
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${declaration.slug}-polaroid-${n}.png`;
+      link.download = `${declaration.slug}-quadro.png`;
       link.click();
-      n += 1;
+    } catch {
+      setReplyState("Não deu para baixar o quadro agora. Tente outra vez.");
     }
   }
 
@@ -123,7 +163,7 @@ export function ViewerExperience({
             className="relative flex min-h-dvh flex-col items-center justify-center px-4 text-center"
             exit={{ opacity: 0, scale: 0.96 }}
           >
-            <HeartConfetti />
+            <HeartConfetti intense={declaration.revealEffect === "hearts"} />
             <motion.button
               type="button"
               onClick={() => setOpened(true)}
@@ -149,6 +189,11 @@ export function ViewerExperience({
               key={flashKey}
               className="flash-burst pointer-events-none fixed inset-0 z-50 bg-white"
             />
+          ) : null}
+          {declaration.revealEffect === "hearts" ? (
+            <div className="pointer-events-none fixed inset-0 z-20">
+              <HeartConfetti intense />
+            </div>
           ) : null}
           <header className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-black/25 px-4 py-3 text-white backdrop-blur-md">
             <div className="min-w-0">
@@ -241,7 +286,8 @@ export function ViewerExperience({
                       caption={photo.caption}
                       filter={photo.filter}
                       rotate={ROTATIONS[photoIndex % ROTATIONS.length]}
-                      reveal={declaration.revealEffect === "polaroid" && photoIndex === index}
+                      reveal={PHOTO_REVEALS.has(declaration.revealEffect) && photoIndex === index}
+                      revealStyle={declaration.revealEffect}
                       size="lg"
                     />
                   </motion.div>
@@ -269,7 +315,8 @@ export function ViewerExperience({
                         caption={photo.caption}
                         filter={photo.filter}
                         rotate={-1.5}
-                        reveal={declaration.revealEffect === "polaroid"}
+                        reveal={PHOTO_REVEALS.has(declaration.revealEffect)}
+                        revealStyle={declaration.revealEffect}
                         size="lg"
                       />
                     </motion.div>
@@ -291,7 +338,8 @@ export function ViewerExperience({
                       imageUrl={current.imageUrl}
                       caption={current.caption}
                       filter={current.filter}
-                      reveal={declaration.revealEffect === "polaroid"}
+                      reveal={PHOTO_REVEALS.has(declaration.revealEffect)}
+                      revealStyle={declaration.revealEffect}
                       size="lg"
                     />
                   </motion.div>
@@ -310,6 +358,12 @@ export function ViewerExperience({
                     />
                   ))}
                 </div>
+              </div>
+            ) : null}
+
+            {mode === "board" && declaration.photos.length > 0 ? (
+              <div className="mx-auto max-w-3xl py-4">
+                <PhotoBoard declaration={declaration} />
               </div>
             ) : null}
           </main>
@@ -333,6 +387,10 @@ export function ViewerExperience({
                 <Button type="button" variant="outline" onClick={() => void downloadAlbum()}>
                   <Download />
                   Baixar polaroids
+                </Button>
+                <Button type="button" variant="outline" onClick={() => void downloadBoard()}>
+                  <Download />
+                  Baixar quadro
                 </Button>
               </div>
               {replyState ? <p className="mt-2 text-sm text-muted-foreground">{replyState}</p> : null}

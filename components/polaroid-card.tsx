@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { FILTER_CLASS, type PhotoFilter } from "@/lib/types";
+import { FILTER_CLASS, type PhotoFilter, type RevealEffect } from "@/lib/types";
 
 type PolaroidCardProps = {
   imageUrl: string;
@@ -11,14 +11,15 @@ type PolaroidCardProps = {
   className?: string;
   rotate?: number;
   reveal?: boolean;
+  revealStyle?: RevealEffect;
   size?: "sm" | "md" | "lg";
   onClick?: () => void;
   interactive?: boolean;
 };
 
 const sizes = {
-  sm: "w-[180px]",
-  md: "w-[230px]",
+  sm: "w-full",
+  md: "w-full max-w-[230px]",
   lg: "w-[min(86vw,300px)]",
 };
 
@@ -29,6 +30,7 @@ export function PolaroidCard({
   className,
   rotate = 0,
   reveal = false,
+  revealStyle = "polaroid",
   size = "md",
   onClick,
   interactive = true,
@@ -37,7 +39,7 @@ export function PolaroidCard({
     <motion.figure
       data-polaroid
       className={cn(
-        "polaroid-frame relative rounded-[4px] px-3 pt-3 pb-4",
+        "polaroid-frame relative flex w-full flex-col rounded-[4px] px-3 pt-3 pb-4",
         sizes[size],
         className
       )}
@@ -57,7 +59,9 @@ export function PolaroidCard({
             className={cn(
               "h-full w-full object-cover",
               FILTER_CLASS[filter],
-              reveal && "reveal-photo"
+              reveal && revealStyle === "polaroid" && "reveal-photo",
+              reveal && revealStyle === "fade" && "reveal-fade",
+              reveal && revealStyle === "letter" && "reveal-letter"
             )}
           />
         ) : (
@@ -66,7 +70,7 @@ export function PolaroidCard({
           </div>
         )}
       </div>
-      <figcaption className="font-hand mt-3 min-h-10 text-center text-[1.35rem] leading-tight text-graphite">
+      <figcaption className="font-hand mt-3 min-h-10 whitespace-pre-wrap break-words text-center text-[1.35rem] leading-snug text-graphite">
         {caption || "escreva a declaração desta memória"}
       </figcaption>
     </motion.figure>

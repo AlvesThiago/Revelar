@@ -41,8 +41,8 @@ export function PhotoStudio({
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-      <div>
+    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
+      <div className="min-w-0">
         <label
           onDragOver={(event) => {
             event.preventDefault();
@@ -63,6 +63,7 @@ export function PhotoStudio({
           <p className="font-medium text-graphite">Arraste até 12 fotos para o estúdio</p>
           <p className="mt-1 text-sm text-muted-foreground">
             JPG ou PNG. Compactamos na hora para caber no álbum.
+            {photos.length > 0 ? ` ${photos.length}/12 no álbum.` : ""}
           </p>
           <input
             type="file"
@@ -86,15 +87,19 @@ export function PhotoStudio({
             axis="x"
             values={photos.map((photo) => photo.id)}
             onReorder={onReorder}
-            className="mt-6 flex gap-4 overflow-x-auto pb-3"
+            className="mt-6 flex flex-wrap content-start gap-3"
           >
             {photos.map((photo) => (
-              <Reorder.Item key={photo.id} value={photo.id} className="shrink-0">
+              <Reorder.Item
+                key={photo.id}
+                value={photo.id}
+                className="w-[calc(50%-0.375rem)] min-w-0 sm:w-[calc(33.333%-0.5rem)] xl:w-[calc(25%-0.5625rem)]"
+              >
                 <button
                   type="button"
                   onClick={() => setSelectedId(photo.id)}
                   className={cn(
-                    "rounded-sm",
+                    "block w-full rounded-sm",
                     selected?.id === photo.id && "ring-2 ring-rose ring-offset-4 ring-offset-cream"
                   )}
                 >
@@ -105,6 +110,7 @@ export function PhotoStudio({
                     size="sm"
                     rotate={0}
                     interactive={false}
+                    className="mx-auto"
                   />
                 </button>
               </Reorder.Item>
@@ -118,7 +124,7 @@ export function PhotoStudio({
         ) : null}
       </div>
 
-      <aside className="neu-card rounded-3xl p-5">
+      <aside className="neu-card min-w-0 self-start rounded-3xl p-5 lg:sticky lg:top-24">
         {selected ? (
           <div className="space-y-4">
             <PolaroidCard
@@ -126,7 +132,7 @@ export function PhotoStudio({
               caption={selected.caption}
               filter={selected.filter}
               size="md"
-              rotate={-1}
+              rotate={0}
               interactive={false}
               className="mx-auto"
             />

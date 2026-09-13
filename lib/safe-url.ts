@@ -1,6 +1,7 @@
 import {
   PHOTO_FILTERS,
   VIEW_MODES,
+  REVEAL_EFFECTS,
   WALLPAPERS,
   type PhotoFilter,
   type RevealEffect,
@@ -71,7 +72,6 @@ export function sanitizeMediaUrl(raw: string) {
   return parsed.toString();
 }
 
-const REVEAL_EFFECTS = new Set<RevealEffect>(["polaroid", "camera"]);
 const SOUNDTRACK_TYPES = new Set<SoundtrackType>(["url", "upload", "spotify", "youtube"]);
 
 export function parseWallpaper(value: string): Wallpaper {
@@ -83,7 +83,9 @@ export function parseViewMode(value: string): ViewMode {
 }
 
 export function parseRevealEffect(value: string): RevealEffect {
-  return REVEAL_EFFECTS.has(value as RevealEffect) ? (value as RevealEffect) : "polaroid";
+  return REVEAL_EFFECTS.some((item) => item.id === value)
+    ? (value as RevealEffect)
+    : "polaroid";
 }
 
 export function parseSoundtrackType(value: string): SoundtrackType {
