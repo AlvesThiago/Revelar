@@ -362,7 +362,7 @@ export function ViewerExperience({
             ) : null}
 
             {mode === "board" && declaration.photos.length > 0 ? (
-              <div className="mx-auto max-w-3xl py-4">
+              <div className="mx-auto max-w-5xl py-4">
                 <PhotoBoard declaration={declaration} />
               </div>
             ) : null}
