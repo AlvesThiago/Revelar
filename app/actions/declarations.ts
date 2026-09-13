@@ -1,8 +1,6 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -23,7 +21,6 @@ import {
   assertSafeImage,
   clientKey,
   rateLimit,
-  removePublicUpload,
   signUnlockToken,
   unlockCookieName,
   unlockCookieOptions,
@@ -35,10 +32,13 @@ import {
   parseSoundtrackType,
   parseViewMode,
   parseWallpaper,
+  audioPublicUrl,
+  photoPublicUrl,
   sanitizeMediaUrl,
   sanitizeText,
   validateAlbumPassword,
 } from "@/lib/safe-url";
+import { deleteUpload, saveUpload } from "@/lib/storage";
 import { requireUser } from "@/lib/session";
 import { slugifyCoupleName } from "@/lib/slug";
 import { ensureSeeded } from "@/lib/seed";
@@ -138,7 +138,6 @@ export async function saveDeclarationAction(id: string, draft: DeclarationDraft)
     coupleName: sanitizeText(draft.coupleName, 80),
     title: sanitizeText(draft.title, 120),
     startDate: startDate && !Number.isNaN(startDate.getTime()) ? startDate : null,
-    soundtrackUrl,
     soundtrackType: parseSoundtrackType(draft.soundtrackType),
     soundtrackName: sanitizeText(draft.soundtrackName, 120),
     revealEffect: parseRevealEffect(draft.revealEffect),
@@ -148,6 +147,10 @@ export async function saveDeclarationAction(id: string, draft: DeclarationDraft)
     slug,
     updatedAt: new Date(),
   };
+
+  if (!soundtrackUrl.startsWith("/api/media/")) {
+    patch.soundtrackUrl = soundtrackUrl;
+  }
 
   if (draft.clearPassword) {
     patch.passwordHash = null;
@@ -161,51 +164,59 @@ export async function saveDeclarationAction(id: string, draft: DeclarationDraft)
 
 export async function uploadPhotoAction(formData: FormData) {
   const user = await requireUser();
-  const declarationId = String(formData.get("declarationId") ?? "");
-  const current = await getDeclarationById(declarationId);
-  if (!current || current.userId !== user.id) {
-    return { error: "Declaração não encontrada." };
+  try {
+    const declarationId = String(formData.get("declarationId") ?? "");
+    const current = await getDeclarationById(declarationId);
+    if (!current || current.userId !== user.id) {
+      return { error: "Declaração não encontrada." };
+    }
+    if (current.photos.length >= 12) {
+      return { error: "Você já usou as 12 polaroids deste álbum." };
+    }
+
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) {
+      return { error: "Envie uma foto para revelar." };
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      return { error: "A foto precisa ter menos de 8 MB." };
+    }
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const kind = assertSafeImage(buffer);
+    if (!kind) {
+      return { error: "Envie uma foto JPG ou PNG válida." };
+    }
+
+    const photoId = newId();
+    const filename = `${declarationId}-${photoId}.${kind}`;
+    const storedUrl = await saveUpload({
+      buffer,
+      filename,
+      contentType: kind === "png" ? "image/png" : "image/jpeg",
+      publicPath: `/uploads/${filename}`,
+    });
+
+    await db.insert(photos).values({
+      id: photoId,
+      declarationId,
+      sortOrder: current.photos.length,
+      imageUrl: storedUrl,
+      caption: "",
+      filter: "natural",
+    });
+
+    await db
+      .update(declarations)
+      .set({ updatedAt: new Date() })
+      .where(eq(declarations.id, declarationId));
+
+    revalidatePath(`/dashboard/${declarationId}`);
+    return { ok: true, id: photoId, imageUrl: photoPublicUrl(photoId, storedUrl) };
+  } catch (error) {
+    console.error("uploadPhotoAction");
+    return { error: "Não foi possível enviar a foto agora. Tente de novo." };
   }
-  if (current.photos.length >= 12) {
-    return { error: "Você já usou as 12 polaroids deste álbum." };
-  }
-
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: "Envie uma foto para revelar." };
-  }
-  if (file.size > 8 * 1024 * 1024) {
-    return { error: "A foto precisa ter menos de 8 MB." };
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const kind = assertSafeImage(buffer);
-  if (!kind) {
-    return { error: "Envie uma foto JPG ou PNG válida." };
-  }
-
-  const filename = `${declarationId}-${newId()}.${kind}`;
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, filename), buffer);
-
-  const photoId = newId();
-  await db.insert(photos).values({
-    id: photoId,
-    declarationId,
-    sortOrder: current.photos.length,
-    imageUrl: `/uploads/${filename}`,
-    caption: "",
-    filter: "natural",
-  });
-
-  await db
-    .update(declarations)
-    .set({ updatedAt: new Date() })
-    .where(eq(declarations.id, declarationId));
-
-  revalidatePath(`/dashboard/${declarationId}`);
-  return { ok: true, id: photoId, imageUrl: `/uploads/${filename}` };
 }
 
 export async function updatePhotoAction(
@@ -241,7 +252,7 @@ export async function deletePhotoAction(photoId: string) {
   if (!current || current.userId !== user.id) return { error: "Sem permissão." };
 
   await db.delete(photos).where(eq(photos.id, photoId));
-  await removePublicUpload(photo.imageUrl);
+  await deleteUpload(photo.imageUrl);
   const remaining = current.photos.filter((item) => item.id !== photoId);
   for (const [index, item] of remaining.entries()) {
     await db.update(photos).set({ sortOrder: index }).where(eq(photos.id, item.id));
@@ -391,37 +402,45 @@ export async function sendReplyAction(slug: string, message: string) {
 
 export async function uploadSoundtrackAction(formData: FormData) {
   const user = await requireUser();
-  const declarationId = String(formData.get("declarationId") ?? "");
-  const current = await getDeclarationById(declarationId);
-  if (!current || current.userId !== user.id) return { error: "Não encontrada." };
+  try {
+    const declarationId = String(formData.get("declarationId") ?? "");
+    const current = await getDeclarationById(declarationId);
+    if (!current || current.userId !== user.id) return { error: "Não encontrada." };
 
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: "Envie um MP3." };
-  if (file.size > 12 * 1024 * 1024) return { error: "O áudio precisa ter menos de 12 MB." };
+    const file = formData.get("file");
+    if (!(file instanceof File) || file.size === 0) return { error: "Envie um MP3." };
+    if (file.size > 12 * 1024 * 1024) return { error: "O áudio precisa ter menos de 12 MB." };
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  if (!assertSafeAudio(buffer)) {
-    return { error: "Envie um arquivo MP3 válido." };
+    const buffer = Buffer.from(await file.arrayBuffer());
+    if (!assertSafeAudio(buffer)) {
+      return { error: "Envie um arquivo MP3 válido." };
+    }
+
+    const filename = `${declarationId}-${newId()}.mp3`;
+    const storedUrl = await saveUpload({
+      buffer,
+      filename,
+      contentType: "audio/mpeg",
+      publicPath: `/uploads/${filename}`,
+    });
+    await deleteUpload(current.soundtrackUrl);
+
+    const safeName = sanitizeText(file.name.replace(/[/\\]/g, ""), 120) || "trilha.mp3";
+
+    await db
+      .update(declarations)
+      .set({
+        soundtrackUrl: storedUrl,
+        soundtrackType: "upload",
+        soundtrackName: safeName,
+        updatedAt: new Date(),
+      })
+      .where(eq(declarations.id, declarationId));
+
+    revalidatePath(`/dashboard/${declarationId}`);
+    return { ok: true, url: audioPublicUrl(declarationId, storedUrl), name: safeName };
+  } catch (error) {
+    console.error("uploadSoundtrackAction");
+    return { error: "Não foi possível enviar o áudio agora. Tente de novo." };
   }
-
-  const filename = `${declarationId}-${newId()}.mp3`;
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, filename), buffer);
-  await removePublicUpload(current.soundtrackUrl);
-
-  const safeName = sanitizeText(file.name.replace(/[/\\]/g, ""), 120) || "trilha.mp3";
-
-  await db
-    .update(declarations)
-    .set({
-      soundtrackUrl: `/uploads/${filename}`,
-      soundtrackType: "upload",
-      soundtrackName: safeName,
-      updatedAt: new Date(),
-    })
-    .where(eq(declarations.id, declarationId));
-
-  revalidatePath(`/dashboard/${declarationId}`);
-  return { ok: true, url: `/uploads/${filename}`, name: safeName };
 }

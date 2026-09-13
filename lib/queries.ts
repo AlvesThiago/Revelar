@@ -1,7 +1,7 @@
 import { asc, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { declarations, photos, replies, users } from "@/lib/schema";
-import { sanitizeMediaUrl } from "@/lib/safe-url";
+import { audioPublicUrl, photoPublicUrl, sanitizeMediaUrl } from "@/lib/safe-url";
 import { firstNameFromCouple } from "@/lib/slug";
 import type {
   DeclarationRecord,
@@ -31,7 +31,7 @@ export function serializeDeclaration(
     coupleName: row.coupleName,
     title: row.title,
     startDate: toIso(row.startDate),
-    soundtrackUrl: sanitizeMediaUrl(row.soundtrackUrl),
+    soundtrackUrl: sanitizeMediaUrl(audioPublicUrl(row.id, row.soundtrackUrl)),
     soundtrackType: row.soundtrackType as SoundtrackType,
     soundtrackName: row.soundtrackName,
     revealEffect: row.revealEffect as RevealEffect,
@@ -52,7 +52,7 @@ export function serializeDeclaration(
           id: photo.id,
           declarationId: photo.declarationId,
           sortOrder: photo.sortOrder,
-          imageUrl: sanitizeMediaUrl(photo.imageUrl),
+          imageUrl: sanitizeMediaUrl(photoPublicUrl(photo.id, photo.imageUrl)),
           caption: photo.caption,
           filter: photo.filter as PhotoFilter,
         })

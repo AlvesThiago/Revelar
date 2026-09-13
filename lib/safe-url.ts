@@ -17,6 +17,16 @@ export function safeUploadFilename(name: string) {
   return base.replace(/[^A-Za-z0-9._-]/g, "");
 }
 
+export function photoPublicUrl(photoId: string, storedUrl: string) {
+  if (storedUrl.startsWith("data:")) return `/api/media/photo/${photoId}`;
+  return storedUrl;
+}
+
+export function audioPublicUrl(declarationId: string, storedUrl: string) {
+  if (storedUrl.startsWith("data:")) return `/api/media/audio/${declarationId}`;
+  return storedUrl;
+}
+
 export function sanitizeText(value: string, max: number) {
   return value.trim().replace(/\s+/g, " ").slice(0, max);
 }
@@ -37,6 +47,15 @@ export function sanitizeMediaUrl(raw: string) {
   if (value.startsWith("/uploads/")) {
     const filename = safeUploadFilename(value.slice("/uploads/".length));
     return filename ? `/uploads/${filename}` : "";
+  }
+  if (/^\/api\/media\/(?:photo|audio)\/[A-Za-z0-9-]+$/.test(value)) {
+    return value;
+  }
+  if (
+    value.startsWith("data:image/jpeg;base64,") ||
+    value.startsWith("data:image/png;base64,")
+  ) {
+    return value.length <= 1_800_000 ? value : "";
   }
 
   let parsed: URL;

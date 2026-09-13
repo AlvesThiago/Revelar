@@ -148,34 +148,39 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
     const remaining = 12 - record.photos.length;
     const files = (await filesToCompressed(list)).slice(0, remaining);
     setBusy(true);
-    for (const file of files) {
-      const form = new FormData();
-      form.set("declarationId", record.id);
-      form.set("file", file);
-      const result = await uploadPhotoAction(form);
-      if (result.error) {
-        setError(result.error);
-        break;
+    try {
+      for (const file of files) {
+        const form = new FormData();
+        form.set("declarationId", record.id);
+        form.set("file", file);
+        const result = await uploadPhotoAction(form);
+        if (result.error) {
+          setError(result.error);
+          break;
+        }
+        if (result.id && result.imageUrl) {
+          setRecord((current) => ({
+            ...current,
+            photos: [
+              ...current.photos,
+              {
+                id: result.id!,
+                declarationId: current.id,
+                sortOrder: current.photos.length,
+                imageUrl: result.imageUrl!,
+                caption: "",
+                filter: "natural",
+              },
+            ],
+          }));
+        }
       }
-      if (result.id && result.imageUrl) {
-        setRecord((current) => ({
-          ...current,
-          photos: [
-            ...current.photos,
-            {
-              id: result.id!,
-              declarationId: current.id,
-              sortOrder: current.photos.length,
-              imageUrl: result.imageUrl!,
-              caption: "",
-              filter: "natural",
-            },
-          ],
-        }));
-      }
+    } catch {
+      setError("Não foi possível enviar a foto agora. Tente de novo.");
+    } finally {
+      setBusy(false);
+      router.refresh();
     }
-    setBusy(false);
-    router.refresh();
   }
 
   async function handlePhotoUpdate(id: string, data: { caption?: string; filter?: PhotoFilter }) {

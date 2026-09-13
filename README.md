@@ -57,7 +57,7 @@ O `DATABASE_URL` fica só em `.env.local` (não vai para o git). Depois de troca
 - Senha opcional no envelope, respostas de volta e métricas de visualização
 - Download das polaroids montadas em PNG
 
-Fotos e MP3 ficam em `public/uploads` neste ambiente local. Em produção, troque por um bucket (Neon Object Storage ou S3).
+Fotos e MP3 ficam em `public/uploads` no computador. Na Vercel, o app guarda o arquivo no banco (ou no Blob, se você conectar um store) e serve por `/api/media`.
 
 ## Identidade
 
