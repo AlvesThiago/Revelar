@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Reorder } from "framer-motion";
-import { ImagePlus, Trash2 } from "lucide-react";
+import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { PolaroidCard } from "@/components/polaroid-card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,9 +11,16 @@ import { compressImage } from "@/lib/image";
 import { PHOTO_FILTERS, type PhotoFilter, type PhotoRecord } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+export type PhotoUploadProgress = {
+  done: number;
+  total: number;
+  phase: "prepare" | "send";
+};
+
 type PhotoStudioProps = {
   photos: PhotoRecord[];
   busy: boolean;
+  uploading?: PhotoUploadProgress | null;
   onUpload: (files: FileList | File[]) => Promise<void>;
   onUpdate: (id: string, data: { caption?: string; filter?: PhotoFilter }) => void;
   onDelete: (id: string) => void;
@@ -23,6 +30,7 @@ type PhotoStudioProps = {
 export function PhotoStudio({
   photos,
   busy,
+  uploading = null,
   onUpload,
   onUpdate,
   onDelete,
@@ -34,9 +42,19 @@ export function PhotoStudio({
     () => photos.find((photo) => photo.id === selectedId) ?? photos[0] ?? null,
     [photos, selectedId]
   );
+  const pendingCount = uploading ? Math.max(0, uploading.total - uploading.done) : 0;
+  const uploadLabel = !uploading
+    ? ""
+    : uploading.phase === "prepare"
+      ? uploading.total === 1
+        ? "Preparando sua foto..."
+        : `Preparando ${uploading.total} fotos...`
+      : uploading.total === 1
+        ? "Revelando a polaroid..."
+        : `Revelando ${Math.min(uploading.done + 1, uploading.total)} de ${uploading.total}...`;
 
   async function handleFiles(list: FileList | File[] | null) {
-    if (!list || list.length === 0) return;
+    if (!list || list.length === 0 || busy) return;
     await onUpload(list);
   }
 
@@ -44,9 +62,10 @@ export function PhotoStudio({
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
       <div className="min-w-0">
         <label
+          aria-busy={Boolean(uploading)}
           onDragOver={(event) => {
             event.preventDefault();
-            setDragging(true);
+            if (!busy) setDragging(true);
           }}
           onDragLeave={() => setDragging(false)}
           onDrop={async (event) => {
@@ -55,16 +74,39 @@ export function PhotoStudio({
             await handleFiles(event.dataTransfer.files);
           }}
           className={cn(
-            "neu-inset flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-[#d9c4b8] px-6 py-10 text-center transition",
-            dragging && "border-rose bg-blush/70"
+            "neu-inset relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-3xl border border-dashed border-[#d9c4b8] px-6 py-10 text-center transition",
+            dragging && "border-rose bg-blush/70",
+            (busy || photos.length >= 12) && "cursor-wait"
           )}
         >
-          <ImagePlus className="mb-3 size-8 text-rose" />
-          <p className="font-medium text-graphite">Arraste até 12 fotos para o estúdio</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            JPG ou PNG. Compactamos na hora para caber no álbum.
-            {photos.length > 0 ? ` ${photos.length}/12 no álbum.` : ""}
-          </p>
+          {uploading ? (
+            <div className="flex flex-col items-center" role="status" aria-live="polite">
+              <Loader2 className="mb-3 size-8 animate-spin text-rose" />
+              <p className="font-hand text-2xl text-rose">{uploadLabel}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Isso pode levar alguns segundos. Não feche esta página.
+              </p>
+              {uploading.total > 1 ? (
+                <div className="mt-4 h-1.5 w-48 overflow-hidden rounded-full bg-[#ead9d0]">
+                  <div
+                    className="h-full rounded-full bg-rose transition-all duration-300"
+                    style={{
+                      width: `${Math.round((uploading.done / uploading.total) * 100)}%`,
+                    }}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <ImagePlus className="mb-3 size-8 text-rose" />
+              <p className="font-medium text-graphite">Arraste até 12 fotos para o estúdio</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                JPG ou PNG. Compactamos na hora para caber no álbum.
+                {photos.length > 0 ? ` ${photos.length}/12 no álbum.` : ""}
+              </p>
+            </>
+          )}
           <input
             type="file"
             accept="image/*"
@@ -78,7 +120,7 @@ export function PhotoStudio({
           />
         </label>
 
-        {photos.length === 0 ? (
+        {photos.length === 0 && pendingCount === 0 ? (
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Nenhuma polaroid ainda. A primeira foto já muda o clima do álbum.
           </p>
@@ -114,6 +156,22 @@ export function PhotoStudio({
                   />
                 </button>
               </Reorder.Item>
+            ))}
+            {Array.from({ length: pendingCount }).map((_, index) => (
+              <div
+                key={`pending-${index}`}
+                className="w-[calc(50%-0.375rem)] min-w-0 sm:w-[calc(33.333%-0.5rem)] xl:w-[calc(25%-0.5625rem)]"
+              >
+                <figure className="polaroid-frame mx-auto flex w-full max-w-[230px] flex-col rounded-[4px] px-3 pt-3 pb-4">
+                  <div className="relative aspect-square overflow-hidden bg-[#efe6dc]">
+                    <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-blush via-[#efe6dc] to-peach/50" />
+                    <Loader2 className="absolute inset-0 m-auto size-7 animate-spin text-rose" />
+                  </div>
+                  <figcaption className="font-hand mt-3 min-h-10 text-center text-[1.35rem] leading-snug text-rose">
+                    revelando...
+                  </figcaption>
+                </figure>
+              </div>
             ))}
           </Reorder.Group>
         )}
@@ -170,6 +228,7 @@ export function PhotoStudio({
               type="button"
               variant="destructive"
               className="w-full"
+              disabled={busy}
               onClick={() => onDelete(selected.id)}
             >
               <Trash2 />

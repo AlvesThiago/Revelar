@@ -59,6 +59,11 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{
+    done: number;
+    total: number;
+    phase: "prepare" | "send";
+  } | null>(null);
   const [copied, setCopied] = useState(false);
   const [qr, setQr] = useState("");
 
@@ -148,10 +153,18 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
 
   async function handleUpload(list: FileList | File[]) {
     const remaining = 12 - record.photos.length;
-    const files = (await filesToCompressed(list)).slice(0, remaining);
+    const incoming = Array.from(list)
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, remaining);
+    if (incoming.length === 0) return;
+
     setBusy(true);
+    setError("");
+    setUploadProgress({ done: 0, total: incoming.length, phase: "prepare" });
     try {
-      for (const file of files) {
+      const files = await filesToCompressed(incoming);
+      for (const [index, file] of files.entries()) {
+        setUploadProgress({ done: index, total: files.length, phase: "send" });
         const form = new FormData();
         form.set("declarationId", record.id);
         form.set("file", file);
@@ -176,11 +189,13 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
             ],
           }));
         }
+        setUploadProgress({ done: index + 1, total: files.length, phase: "send" });
       }
     } catch {
       setError("Não foi possível enviar a foto agora. Tente de novo.");
     } finally {
       setBusy(false);
+      setUploadProgress(null);
       router.refresh();
     }
   }
@@ -331,11 +346,12 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
               }}
             />
             <label className="mt-2 inline-flex cursor-pointer text-sm text-graphite underline">
-              ou enviar um MP3
+              {busy ? "Enviando áudio..." : "ou enviar um MP3"}
               <input
                 type="file"
                 accept="audio/mpeg,audio/mp3,audio/*"
                 className="sr-only"
+                disabled={busy}
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   if (file) void handleSoundtrackFile(file);
@@ -350,6 +366,7 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
         <PhotoStudio
           photos={record.photos}
           busy={busy}
+          uploading={uploadProgress}
           onUpload={handleUpload}
           onUpdate={handlePhotoUpdate}
           onDelete={handleDelete}
@@ -545,7 +562,7 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
       <div className="mt-8 flex flex-col-reverse items-center justify-between gap-3 sm:flex-row">
         <button
           type="button"
-          disabled={step === 0}
+          disabled={step === 0 || busy}
           onClick={() => go(step - 1)}
           className={cn(buttonVariants({ variant: "ghost" }), step === 0 && "opacity-40")}
         >
@@ -558,6 +575,7 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
             <button
               type="button"
               className={cn(buttonVariants(), "btn-love border-0")}
+              disabled={busy}
               onClick={() => go(step + 1)}
             >
               Continuar
