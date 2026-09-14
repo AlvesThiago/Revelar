@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, count, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { declarations, photos, replies, users } from "@/lib/schema";
 import { audioPublicUrl, photoPublicUrl, sanitizeMediaUrl } from "@/lib/safe-url";
@@ -200,4 +200,55 @@ export const getOwnerName = cache(async function getOwnerName(userId: string) {
     .where(eq(users.id, userId))
     .limit(1);
   return user?.name ?? "";
+});
+
+export type AccountSummary = {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  albums: number;
+  published: number;
+  views: number;
+  hasPassword: boolean;
+  googleLinked: boolean;
+};
+
+export const getAccountForUser = cache(async function getAccountForUser(
+  userId: string
+): Promise<AccountSummary | null> {
+  const [user] = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      createdAt: users.createdAt,
+      passwordHash: users.passwordHash,
+      googleId: users.googleId,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!user) return null;
+
+  const [stats] = await db
+    .select({
+      albums: count(),
+      published: sql<number>`coalesce(sum(case when ${declarations.published} then 1 else 0 end), 0)`,
+      views: sql<number>`coalesce(sum(${declarations.viewCount}), 0)`,
+    })
+    .from(declarations)
+    .where(eq(declarations.userId, userId));
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    createdAt: user.createdAt.toISOString(),
+    albums: Number(stats?.albums ?? 0),
+    published: Number(stats?.published ?? 0),
+    views: Number(stats?.views ?? 0),
+    hasPassword: Boolean(user.passwordHash),
+    googleLinked: Boolean(user.googleId),
+  };
 });

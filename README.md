@@ -5,7 +5,7 @@ Declarações em polaroid. Monte um álbum instantâneo, escreva cartas em cada 
 ## Stack
 
 - **Next.js 16** (App Router)
-- **Auth.js / NextAuth 5** (login por e-mail e senha)
+- **Auth.js / NextAuth 5** (e-mail e senha, ou conta Google)
 - **Neon PostgreSQL** + Drizzle ORM
 - **Tailwind CSS 4** + shadcn/ui
 - **Framer Motion**
@@ -38,6 +38,7 @@ Baixe `revelar.zip` (gerado neste ambiente), extraia para `~/Projetos/revelar` e
 2. Copie `.env.example` para `.env.local` e preencha:
    - `DATABASE_URL` — string do [Neon](https://neon.tech)
    - `AUTH_SECRET` — `openssl rand -base64 32`
+   - `AUTH_GOOGLE_ID` e `AUTH_GOOGLE_SECRET` — no [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crie um ID de cliente OAuth **Web**. Origens autorizadas: `http://127.0.0.1:3000`. URI de redirecionamento: `http://127.0.0.1:3000/api/auth/callback/google`. Em produção, acrescente o domínio da Vercel nas duas listas.
 3. Publique o schema: `npm run db:push`
 4. Inicie o app: `npm run dev`
 
@@ -50,7 +51,7 @@ O `DATABASE_URL` fica só em `.env.local` (não vai para o git). Depois de troca
 ## O que está pronto
 
 - Landing com câmera instantânea e polaroids de exemplo
-- Cadastro, login e sessão via Auth.js
+- Cadastro, login (e-mail/senha ou Google) e sessão via Auth.js
 - Wizard em 4 etapas: dados do casal, estúdio (até 12 fotos), revelação/tema, publicação
 - Link único `/nos/[slug]`, QR com coração, copiar e WhatsApp
 - Página do casal com envelope, corações, player com fade-in, contador vivo e 3 modos (mesa, álbum, slideshow)

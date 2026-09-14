@@ -1,3 +1,4 @@
+import { Settings } from "lucide-react";
 import Link from "next/link";
 import { auth, signOut } from "@/lib/auth";
 import { ReplyInbox } from "@/components/dashboard/reply-inbox";
@@ -21,6 +22,13 @@ export async function SiteHeader() {
               <ReplyInbox items={replies} />
               <Link href="/dashboard" className={cn(buttonVariants({ variant: "ghost" }))}>
                 Painel
+              </Link>
+              <Link
+                href="/dashboard/conta"
+                className={cn(buttonVariants({ variant: "ghost" }), "px-2 sm:px-3")}
+              >
+                <Settings />
+                <span className="hidden sm:inline">Conta</span>
               </Link>
               <form
                 action={async () => {

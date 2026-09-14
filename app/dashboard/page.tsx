@@ -35,6 +35,9 @@ export default async function DashboardPage({
             <h1 className="text-3xl font-semibold text-graphite">Suas declarações</h1>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link href="/dashboard/conta" className={cn(buttonVariants({ variant: "outline" }), "h-11")}>
+              Conta
+            </Link>
             <Link href="/dashboard/respostas" className={cn(buttonVariants({ variant: "outline" }), "h-11")}>
               Respostas
               {unread > 0 ? ` (${unread})` : replies.length > 0 ? ` (${replies.length})` : ""}

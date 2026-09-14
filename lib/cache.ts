@@ -5,6 +5,7 @@ export function revalidateUserWorkspace(
 ) {
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/respostas");
+  revalidatePath("/dashboard/conta");
   if (declaration?.id) revalidatePath(`/dashboard/${declaration.id}`);
   if (declaration?.slug) revalidatePath(`/nos/${declaration.slug}`);
   if (declaration?.previousSlug && declaration.previousSlug !== declaration.slug) {

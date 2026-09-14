@@ -27,7 +27,7 @@ const securityHeaders = [
       isProd ? "connect-src 'self'" : "connect-src 'self' ws: wss:",
       "object-src 'none'",
       "base-uri 'self'",
-      "form-action 'self'",
+      "form-action 'self' https://accounts.google.com",
       "frame-ancestors 'none'",
       ...(isProd ? ["upgrade-insecure-requests"] : []),
     ].join("; "),

@@ -2,7 +2,9 @@
 
 import { eq } from "drizzle-orm";
 import { AuthError } from "next-auth";
+import { redirect } from "next/navigation";
 import { signIn } from "@/lib/auth";
+import { isGoogleAuthEnabled } from "@/lib/google-account";
 import {
   normalizeEmail,
   normalizeName,
@@ -123,4 +125,15 @@ export async function loginAction(
   }
 
   return {};
+}
+
+export async function googleSignInAction() {
+  const key = await clientKey();
+  if (!rateLimit(`google:${key}`, 10, 15 * 60 * 1000)) {
+    redirect("/entrar?erro=limite");
+  }
+  if (!isGoogleAuthEnabled()) {
+    redirect("/entrar?erro=google");
+  }
+  await signIn("google", { redirectTo: "/dashboard" });
 }

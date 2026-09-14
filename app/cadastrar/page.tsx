@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { RegisterForm } from "@/components/auth-form";
 import { LoveBackdrop } from "@/components/love-backdrop";
 import { auth } from "@/lib/auth";
+import { isGoogleAuthEnabled } from "@/lib/google-account";
 
 export const metadata = { title: "Criar conta" };
 
@@ -23,7 +24,7 @@ export default async function RegisterPage() {
           Crie sua conta para montar as polaroids, escolher a trilha e gerar o link.
         </p>
         <div className="mt-6">
-          <RegisterForm />
+          <RegisterForm googleEnabled={isGoogleAuthEnabled()} />
         </div>
       </div>
     </div>

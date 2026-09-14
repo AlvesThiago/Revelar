@@ -12,6 +12,7 @@ export async function SiteFooter() {
     session?.user
       ? { href: "/dashboard", label: "Painel" }
       : { href: "/entrar", label: "Entrar" },
+    ...(session?.user ? [{ href: "/dashboard/conta", label: "Conta" }] : []),
   ];
   return (
     <footer className="relative z-10 mt-auto border-t border-[#f0cfc8]/80 bg-[#fff4ef]/90">
