@@ -18,7 +18,7 @@ export async function SiteFooter() {
       <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.15fr_0.75fr_0.95fr] lg:py-14">
         <div>
           <Link href="/" className="font-hand text-4xl leading-none text-graphite">
-            revelar <span className="text-rose">♥</span>
+            revellar <span className="text-rose">♥</span>
           </Link>
           <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">
             Polaroids digitais para quem guarda o que importa. Monte o envelope,
@@ -65,7 +65,7 @@ export async function SiteFooter() {
 
       <div className="border-t border-[#f0cfc8]/70">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-2 px-4 py-4 text-center text-xs text-muted-foreground sm:flex-row sm:px-6 sm:text-left">
-          <p>© 2026 Revelar · feito com amor, sem feed</p>
+          <p>© 2026 Revellar · feito com amor, sem feed</p>
           <p className="font-hand text-base text-rose/80">guarde o que o feed esqueceria</p>
         </div>
       </div>

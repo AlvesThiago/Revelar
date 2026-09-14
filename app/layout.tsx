@@ -16,10 +16,10 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  applicationName: "Revelar",
+  applicationName: "Revellar",
   title: {
-    default: "Revelar — declarações em polaroid",
-    template: "%s · Revelar",
+    default: "Revellar — declarações em polaroid",
+    template: "%s · Revellar",
   },
   description:
     "Transforme suas memórias em uma declaração inesquecível. Monte polaroids, escreva cartas e compartilhe um link só de vocês.",

@@ -1,4 +1,4 @@
-# Revelar
+# Revellar
 
 Declarações em polaroid. Monte um álbum instantâneo, escreva cartas em cada foto e compartilhe um link que abre como um envelope — com trilha, contador ao vivo e revelação ao estilo câmera instantânea.
 

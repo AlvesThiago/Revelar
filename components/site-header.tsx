@@ -13,7 +13,7 @@ export async function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-[#f0cfc8]/70 bg-[#fff7f2]/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="font-hand text-3xl leading-none text-graphite">
-          revelar <span className="text-rose">♥</span>
+          revellar <span className="text-rose">♥</span>
         </Link>
         <nav className="flex items-center gap-1 sm:gap-2">
           {session?.user ? (

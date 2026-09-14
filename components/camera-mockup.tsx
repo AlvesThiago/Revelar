@@ -32,7 +32,7 @@ export function CameraMockup() {
             <div className="size-6 rounded-full border-2 border-[#d98989]" />
           </div>
         </div>
-        <p className="font-hand mt-3 text-center text-2xl text-[#2b2d42]/70">revelar</p>
+        <p className="font-hand mt-3 text-center text-2xl text-[#2b2d42]/70">revellar</p>
       </motion.div>
 
       <motion.div
