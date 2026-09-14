@@ -51,7 +51,7 @@ export function LockedGate({
           placeholder="Senha"
         />
         {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
-        <Button type="submit" disabled={pending} className="mt-4 h-11 w-full bg-graphite text-cream">
+        <Button type="submit" disabled={pending} className="btn-love mt-4 h-11 w-full border-0">
           {pending ? "Abrindo..." : "Desbloquear"}
         </Button>
       </form>

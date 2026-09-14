@@ -45,6 +45,19 @@ export function timeTogether(fromIso: string, now = new Date()): TimeTogether {
   return { years, months, days, hours, minutes, seconds };
 }
 
+export function formatWhen(iso: string) {
+  const then = new Date(iso);
+  const diff = Date.now() - then.getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "agora";
+  if (minutes < 60) return `há ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `há ${hours} ${hours === 1 ? "hora" : "horas"}`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `há ${days} ${days === 1 ? "dia" : "dias"}`;
+  return then.toLocaleDateString("pt-BR");
+}
+
 export function formatLastSeen(iso: string | null) {
   if (!iso) return "Ainda não foi aberto";
   const then = new Date(iso);

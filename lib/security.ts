@@ -15,7 +15,8 @@ function signingSecret() {
 }
 
 export function unlockCookieName(slug: string) {
-  return `revelar_unlock_${slug}`;
+  const safe = slug.replace(/[^a-z0-9-]/gi, "").slice(0, 80);
+  return `revelar_unlock_${safe}`;
 }
 
 export function signUnlockToken(slug: string, passwordHash: string) {
@@ -43,7 +44,7 @@ export function unlockCookieOptions() {
     sameSite: "lax" as const,
     path: "/",
     secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 60 * 60 * 24 * 7,
   };
 }
 
@@ -53,8 +54,16 @@ export async function clientKey() {
   return forwarded || requestHeaders.get("x-real-ip") || "local";
 }
 
+function sweepRateBuckets(now: number) {
+  if (rateBuckets.size < 800) return;
+  for (const [key, bucket] of rateBuckets) {
+    if (now >= bucket.resetAt) rateBuckets.delete(key);
+  }
+}
+
 export function rateLimit(key: string, limit: number, windowMs: number) {
   const now = Date.now();
+  sweepRateBuckets(now);
   const current = rateBuckets.get(key);
   if (!current || now >= current.resetAt) {
     rateBuckets.set(key, { count: 1, resetAt: now + windowMs });

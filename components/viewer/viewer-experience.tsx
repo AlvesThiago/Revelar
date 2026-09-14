@@ -34,7 +34,9 @@ export function ViewerExperience({
   const [reply, setReply] = useState("");
   const [replyState, setReplyState] = useState("");
   const [front, setFront] = useState<string | null>(declaration.photos[0]?.id ?? null);
+  const [needsPlayTap, setNeedsPlayTap] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const embedRef = useRef<HTMLIFrameElement | null>(null);
   const deckRef = useRef<HTMLDivElement | null>(null);
 
   const soundtrack = classifySoundtrack(declaration.soundtrackUrl);
@@ -42,6 +44,8 @@ export function ViewerExperience({
     Boolean(declaration.soundtrackUrl) &&
     (declaration.soundtrackType === "url" || declaration.soundtrackType === "upload") &&
     soundtrack.type === "url";
+  const hasEmbedSoundtrack = soundtrack.type === "spotify" || soundtrack.type === "youtube";
+  const hasSoundtrack = canNativeAudio || hasEmbedSoundtrack;
 
   useEffect(() => {
     if (!opened) return;
@@ -49,14 +53,11 @@ export function ViewerExperience({
   }, [opened, declaration.slug]);
 
   useEffect(() => {
-    if (!opened || !canNativeAudio || !audioRef.current) return;
     const audio = audioRef.current;
+    if (!audio) return;
     audio.muted = muted;
-    void audio.play().then(async () => {
-      setPlaying(true);
-      await fadeAudio(audio, 0, muted ? 0 : 0.72, 1800);
-    }).catch(() => setPlaying(false));
-  }, [opened, canNativeAudio, muted]);
+    if (!muted && playing && audio.volume < 0.2) audio.volume = 0.72;
+  }, [muted, playing]);
 
   useEffect(() => {
     if (!opened || mode !== "slideshow" || declaration.photos.length < 2) return;
@@ -77,16 +78,59 @@ export function ViewerExperience({
 
   const current = declaration.photos[index];
 
-  async function toggleAudio() {
+  function startEmbed() {
+    const frame = embedRef.current;
+    if (!frame?.contentWindow || soundtrack.type !== "youtube") return;
+    frame.contentWindow.postMessage(
+      JSON.stringify({ event: "command", func: "playVideo", args: [] }),
+      "*"
+    );
+  }
+
+  async function startSoundtrack() {
+    startEmbed();
     const audio = audioRef.current;
-    if (!audio) return;
-    if (playing) {
-      audio.pause();
-      setPlaying(false);
+    if (!audio) {
+      if (hasEmbedSoundtrack) {
+        setPlaying(true);
+        setNeedsPlayTap(false);
+      }
       return;
     }
-    await audio.play();
-    setPlaying(true);
+    try {
+      audio.muted = false;
+      audio.volume = 0.72;
+      await audio.play();
+      setPlaying(true);
+      setNeedsPlayTap(false);
+      await fadeAudio(audio, 0.35, 0.72, 700);
+    } catch {
+      setPlaying(false);
+      setNeedsPlayTap(true);
+    }
+  }
+
+  function openEnvelope() {
+    setOpened(true);
+    void startSoundtrack();
+  }
+
+  async function toggleAudio() {
+    const audio = audioRef.current;
+    if (audio) {
+      if (playing) {
+        audio.pause();
+        setPlaying(false);
+        return;
+      }
+      await startSoundtrack();
+      return;
+    }
+    if (hasEmbedSoundtrack) {
+      startEmbed();
+      setPlaying(true);
+      setNeedsPlayTap(false);
+    }
   }
 
   async function downloadAlbum() {
@@ -151,9 +195,15 @@ export function ViewerExperience({
   }
 
   return (
-    <div className={cn("relative min-h-full overflow-hidden", `wallpaper-${declaration.wallpaper}`)}>
+    <div className={cn("relative min-h-full overflow-x-hidden", `wallpaper-${declaration.wallpaper}`)}>
       {canNativeAudio ? (
-        <audio ref={audioRef} src={soundtrack.embedUrl} loop preload="auto" />
+        <audio
+          ref={audioRef}
+          src={soundtrack.embedUrl}
+          loop
+          preload="auto"
+          playsInline
+        />
       ) : null}
 
       <AnimatePresence>
@@ -166,7 +216,7 @@ export function ViewerExperience({
             <HeartConfetti intense={declaration.revealEffect === "hearts"} />
             <motion.button
               type="button"
-              onClick={() => setOpened(true)}
+              onClick={openEnvelope}
               className="neu-card paper-grain relative w-full max-w-md rounded-[32px] px-8 py-12"
               whileHover={{ scale: 1.02, rotate: -1 }}
               whileTap={{ scale: 0.98 }}
@@ -201,7 +251,7 @@ export function ViewerExperience({
               {declaration.startDate ? <LiveCounter startDate={declaration.startDate} /> : null}
             </div>
             <div className="flex items-center gap-1">
-              {canNativeAudio ? (
+              {hasSoundtrack ? (
                 <>
                   <Button
                     type="button"
@@ -209,35 +259,49 @@ export function ViewerExperience({
                     variant="ghost"
                     className="text-white hover:bg-white/10 hover:text-white"
                     onClick={() => void toggleAudio()}
+                    aria-label={playing ? "Pausar música" : "Tocar música"}
                   >
                     {playing ? <Pause /> : <Play />}
                   </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="text-white hover:bg-white/10 hover:text-white"
-                    onClick={() => {
-                      setMuted((value) => !value);
-                      if (audioRef.current) audioRef.current.muted = !muted;
-                    }}
-                  >
-                    {muted ? <VolumeX /> : <Volume2 />}
-                  </Button>
+                  {canNativeAudio ? (
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="text-white hover:bg-white/10 hover:text-white"
+                      onClick={() => {
+                        setMuted((value) => !value);
+                        if (audioRef.current) audioRef.current.muted = !muted;
+                      }}
+                      aria-label={muted ? "Ativar som" : "Silenciar"}
+                    >
+                      {muted ? <VolumeX /> : <Volume2 />}
+                    </Button>
+                  ) : null}
                 </>
               ) : null}
             </div>
           </header>
 
-          {soundtrack.type !== "url" && declaration.soundtrackUrl ? (
-            <div className="sr-only">
+          {hasEmbedSoundtrack && declaration.soundtrackUrl ? (
+            <div className="mx-4 mb-2 overflow-hidden rounded-2xl bg-black/20">
               <iframe
+                ref={embedRef}
                 title="Trilha sonora"
-                src={soundtrack.embedUrl}
+                src={
+                  soundtrack.type === "youtube"
+                    ? `${soundtrack.embedUrl}&origin=${encodeURIComponent(typeof window === "undefined" ? "" : window.location.origin)}`
+                    : soundtrack.embedUrl
+                }
                 allow="autoplay; clipboard-write; encrypted-media"
-                className="h-0 w-0"
+                className={soundtrack.type === "spotify" ? "h-[88px] w-full" : "aspect-video w-full"}
               />
             </div>
+          ) : null}
+          {needsPlayTap ? (
+            <p className="px-4 pb-2 text-center text-xs text-white/85">
+              Toque no play para ouvir a música
+            </p>
           ) : null}
 
           <div className="flex flex-wrap items-center justify-center gap-2 px-4 py-4">
@@ -381,7 +445,7 @@ export function ViewerExperience({
                 className="mt-3 min-h-24 font-hand text-xl"
               />
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button type="button" className="bg-graphite text-cream" onClick={() => void submitReply()}>
+                <Button type="button" className="btn-love border-0" onClick={() => void submitReply()}>
                   Enviar resposta
                 </Button>
                 <Button type="button" variant="outline" onClick={() => void downloadAlbum()}>

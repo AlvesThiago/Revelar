@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { CameraMockup } from "@/components/camera-mockup";
+import { LoveBackdrop } from "@/components/love-backdrop";
 import { PolaroidCard } from "@/components/polaroid-card";
 import { SiteHeader } from "@/components/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+export const revalidate = 3600;
 
 const STEPS = [
   {
@@ -25,12 +28,14 @@ const STEPS = [
 
 export default function HomePage() {
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="relative flex min-h-full flex-col">
+      <LoveBackdrop />
       <SiteHeader />
-      <main className="flex-1">
+      <main className="relative z-10 flex-1">
         <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:py-16">
           <div className="max-w-xl">
-            <p className="font-hand text-2xl text-rose">uma carta que se revela</p>
+            <p className="love-stamp font-hand text-lg">feito com amor, sem feed</p>
+            <p className="font-hand mt-4 text-3xl text-rose">uma carta que se revela ♥</p>
             <h1 className="mt-2 text-4xl font-semibold tracking-tight text-graphite sm:text-5xl sm:leading-[1.1]">
               Transforme suas memórias em uma declaração inesquecível
             </h1>
@@ -41,10 +46,7 @@ export default function HomePage() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/cadastrar"
-                className={cn(
-                  buttonVariants({ size: "lg" }),
-                  "h-12 bg-graphite px-5 text-cream hover:bg-graphite/90"
-                )}
+                className={cn(buttonVariants({ size: "lg" }), "btn-love h-12 border-0 px-5")}
               >
                 Criar nossa declaração
               </Link>
@@ -59,10 +61,17 @@ export default function HomePage() {
           <CameraMockup />
         </section>
 
-        <section className="border-y border-[#ead9d0]/80 bg-blush/40">
+        <section className="border-y border-[#f0cfc8]/80 bg-blush/50">
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-3">
-            {STEPS.map((step) => (
-              <article key={step.n} className="neu-card paper-grain rounded-3xl p-6">
+            {STEPS.map((step, index) => (
+              <article
+                key={step.n}
+                className={cn(
+                  "neu-card paper-grain rounded-3xl p-6",
+                  index === 1 && "lg:-rotate-1",
+                  index === 2 && "lg:rotate-1"
+                )}
+              >
                 <p className="font-hand text-3xl text-rose">{step.n}</p>
                 <h2 className="mt-2 text-xl font-semibold text-graphite">{step.title}</h2>
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">{step.text}</p>
@@ -89,25 +98,28 @@ export default function HomePage() {
               imageUrl="https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=900&q=80"
               caption="quando o sol baixou"
               filter="sepia"
-              rotate={-4}
+              rotate={-6}
             />
             <PolaroidCard
               imageUrl="https://images.unsplash.com/photo-1474552226712-ac0f0961a954?auto=format&fit=crop&w=900&q=80"
               caption="nossas mãos já se conheciam"
               filter="bw"
-              rotate={3}
+              rotate={4}
             />
             <PolaroidCard
               imageUrl="https://images.unsplash.com/photo-1529333166437-7750c2d54e7b?auto=format&fit=crop&w=900&q=80"
               caption="ainda bem que insistimos"
               filter="vintage"
-              rotate={-1}
+              rotate={-2}
             />
           </div>
         </section>
       </main>
-      <footer className="border-t border-[#ead9d0]/80 px-4 py-8 text-center text-sm text-muted-foreground">
-        Revelar · polaroids digitais para quem guarda o que importa
+      <footer className="relative z-10 border-t border-[#f0cfc8]/80 px-4 py-8 text-center">
+        <p className="font-hand text-2xl text-rose">nós, para sempre</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Revelar · polaroids digitais para quem guarda o que importa
+        </p>
       </footer>
     </div>
   );

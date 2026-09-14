@@ -35,12 +35,12 @@ export function LoginForm() {
           autoComplete="current-password"
         />
         {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
-        <Button type="submit" disabled={pending} className="h-11 w-full bg-graphite text-cream">
+        <Button type="submit" disabled={pending} className="btn-love h-11 w-full border-0">
           {pending ? "Entrando..." : "Entrar"}
         </Button>
         <p className="text-center text-sm text-muted-foreground">
           Ainda não tem um álbum?{" "}
-          <Link href="/cadastrar" className="text-graphite underline underline-offset-4">
+          <Link href="/cadastrar" className="text-rose underline underline-offset-4">
             Criar conta
           </Link>
         </p>
@@ -142,13 +142,13 @@ export function RegisterForm() {
         <Button
           type="submit"
           disabled={!canSubmit}
-          className="h-11 w-full bg-graphite text-cream"
+          className="btn-love h-11 w-full border-0"
         >
           {pending ? "Criando..." : "Começar a revelar"}
         </Button>
         <p className="text-center text-sm text-muted-foreground">
           Já tem conta?{" "}
-          <Link href="/entrar" className="text-graphite underline underline-offset-4">
+          <Link href="/entrar" className="text-rose underline underline-offset-4">
             Entrar
           </Link>
         </p>

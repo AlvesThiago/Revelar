@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { isUuid } from "@/lib/crypto";
 import { db } from "@/lib/db";
 import { declarations, photos } from "@/lib/schema";
 import { cookies } from "next/headers";
@@ -13,6 +14,7 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
+  if (!isUuid(id)) return new Response(null, { status: 404 });
   const [photo] = await db.select().from(photos).where(eq(photos.id, id)).limit(1);
   if (!photo) return new Response(null, { status: 404 });
 
@@ -48,6 +50,8 @@ export async function GET(
       "Content-Type": data.contentType,
       "Cache-Control": "private, max-age=31536000, immutable",
       "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "Cross-Origin-Resource-Policy": "same-origin",
     },
   });
 }

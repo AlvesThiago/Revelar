@@ -6,7 +6,7 @@ export function classifySoundtrack(url: string) {
   const value = sanitizeMediaUrl(url);
   if (!value) return { type: "url" as const, embedUrl: "" };
 
-  if (value.startsWith("/uploads/")) {
+  if (value.startsWith("/uploads/") || value.startsWith("/api/media/")) {
     return { type: "url" as const, embedUrl: value };
   }
 
@@ -31,7 +31,7 @@ export function classifySoundtrack(url: string) {
     if (id && /^[A-Za-z0-9_-]{6,}$/.test(id)) {
       return {
         type: "youtube" as const,
-        embedUrl: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&loop=1&playlist=${id}`,
+        embedUrl: `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=0&loop=1&playsinline=1&enablejsapi=1&playlist=${id}`,
       };
     }
   }

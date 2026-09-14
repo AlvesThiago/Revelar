@@ -157,7 +157,7 @@ export function PhotoStudio({
                     className={cn(
                       "rounded-xl border px-3 py-2 text-sm",
                       selected.filter === filter.id
-                        ? "border-graphite bg-graphite text-cream"
+                        ? "btn-love border-0"
                         : "border-[#ead9d0] bg-cream"
                     )}
                   >

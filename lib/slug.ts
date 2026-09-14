@@ -11,6 +11,10 @@ export function slugifyCoupleName(name: string) {
   return cleaned || "nos";
 }
 
+export function sanitizePublicSlug(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 64);
+}
+
 export function firstNameFromCouple(coupleName: string) {
   const parts = coupleName
     .split(/\s*(?:&|e|E)\s*/)

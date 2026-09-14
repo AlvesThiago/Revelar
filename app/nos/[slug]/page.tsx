@@ -3,6 +3,8 @@ import { getPublicDeclarationAction } from "@/app/actions/declarations";
 import { LockedGate } from "@/components/viewer/locked-gate";
 import { ViewerExperience } from "@/components/viewer/viewer-experience";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: {

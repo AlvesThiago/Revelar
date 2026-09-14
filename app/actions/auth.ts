@@ -45,6 +45,10 @@ export async function registerAction(
   const emailError = validateEmail(email);
   if (emailError) return { error: emailError };
 
+  if (!rateLimit(`register-email:${email}`, 3, 15 * 60 * 1000)) {
+    return { error: RATE_LIMITED };
+  }
+
   const passwordError = validatePassword(password);
   if (passwordError) return { error: passwordError };
 
@@ -99,6 +103,10 @@ export async function loginAction(
   const password = String(formData.get("password") ?? "");
   if (validateEmail(email) || !password) {
     return { error: "E-mail ou senha incorretos." };
+  }
+
+  if (!rateLimit(`login-email:${email}`, 8, 15 * 60 * 1000)) {
+    return { error: RATE_LIMITED };
   }
 
   try {

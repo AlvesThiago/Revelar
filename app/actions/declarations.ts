@@ -1,10 +1,10 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { and, eq, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { hashPassword, newId, verifyPassword } from "@/lib/crypto";
+import { revalidateUserWorkspace } from "@/lib/cache";
+import { hashPassword, isUuid, newId, verifyPassword } from "@/lib/crypto";
 import { db } from "@/lib/db";
 import { declarations, photos, replies } from "@/lib/schema";
 import {
@@ -12,6 +12,7 @@ import {
   getDeclarationBySlug,
   getOwnerName,
   listDeclarationsForUser,
+  REPLIES_SEEN_COOKIE,
   serializeDeclaration,
   toPublicDeclaration,
 } from "@/lib/queries";
@@ -40,7 +41,7 @@ import {
 } from "@/lib/safe-url";
 import { deleteUpload, saveUpload } from "@/lib/storage";
 import { requireUser } from "@/lib/session";
-import { slugifyCoupleName } from "@/lib/slug";
+import { sanitizePublicSlug, slugifyCoupleName } from "@/lib/slug";
 import { ensureSeeded } from "@/lib/seed";
 import type {
   PhotoFilter,
@@ -49,6 +50,10 @@ import type {
   ViewMode,
   Wallpaper,
 } from "@/lib/types";
+
+function publicSlug(value: string) {
+  return sanitizePublicSlug(value) || null;
+}
 
 async function uniqueSlug(base: string, ignoreId?: string) {
   const root = slugifyCoupleName(base);
@@ -74,6 +79,11 @@ async function isUnlocked(slug: string, passwordHash: string | null) {
 
 export async function createDeclarationAction() {
   const user = await requireUser();
+  const key = await clientKey();
+  if (!rateLimit(`create:${user.id}:${key}`, 8, 15 * 60 * 1000)) {
+    redirect("/dashboard?aviso=limite");
+  }
+
   await ensureSeeded();
   const id = newId();
   const slug = await uniqueSlug(`rascunho-${id.slice(0, 6)}`);
@@ -86,6 +96,7 @@ export async function createDeclarationAction() {
     title: "",
   });
 
+  revalidateUserWorkspace({ id });
   redirect(`/dashboard/${id}`);
 }
 
@@ -97,6 +108,7 @@ export async function getMyDeclarationsAction() {
 
 export async function getEditorDeclarationAction(id: string) {
   const user = await requireUser();
+  if (!isUuid(id)) return null;
   const record = await getDeclarationById(id);
   if (!record || record.userId !== user.id) return null;
   return record;
@@ -119,6 +131,7 @@ export type DeclarationDraft = {
 
 export async function saveDeclarationAction(id: string, draft: DeclarationDraft) {
   const user = await requireUser();
+  if (!isUuid(id)) return { error: "Declaração não encontrada." };
   const current = await getDeclarationById(id);
   if (!current || current.userId !== user.id) {
     return { error: "Declaração não encontrada." };
@@ -159,13 +172,20 @@ export async function saveDeclarationAction(id: string, draft: DeclarationDraft)
   }
 
   await db.update(declarations).set(patch).where(eq(declarations.id, id));
+  revalidateUserWorkspace({ id, slug, previousSlug: current.slug });
   return { ok: true, slug };
 }
 
 export async function uploadPhotoAction(formData: FormData) {
   const user = await requireUser();
+  const key = await clientKey();
+  if (!rateLimit(`upload-photo:${user.id}:${key}`, 20, 15 * 60 * 1000)) {
+    return { error: RATE_LIMITED };
+  }
+
   try {
     const declarationId = String(formData.get("declarationId") ?? "");
+    if (!isUuid(declarationId)) return { error: "Declaração não encontrada." };
     const current = await getDeclarationById(declarationId);
     if (!current || current.userId !== user.id) {
       return { error: "Declaração não encontrada." };
@@ -211,7 +231,7 @@ export async function uploadPhotoAction(formData: FormData) {
       .set({ updatedAt: new Date() })
       .where(eq(declarations.id, declarationId));
 
-    revalidatePath(`/dashboard/${declarationId}`);
+    revalidateUserWorkspace({ id: declarationId, slug: current.slug });
     return { ok: true, id: photoId, imageUrl: photoPublicUrl(photoId, storedUrl) };
   } catch (error) {
     console.error("uploadPhotoAction");
@@ -224,6 +244,7 @@ export async function updatePhotoAction(
   data: { caption?: string; filter?: PhotoFilter }
 ) {
   const user = await requireUser();
+  if (!isUuid(photoId)) return { error: "Foto não encontrada." };
   const [photo] = await db.select().from(photos).where(eq(photos.id, photoId)).limit(1);
   if (!photo) return { error: "Foto não encontrada." };
   const current = await getDeclarationById(photo.declarationId);
@@ -240,12 +261,13 @@ export async function updatePhotoAction(
     })
     .where(eq(photos.id, photoId));
 
-  revalidatePath(`/dashboard/${current.id}`);
+  revalidateUserWorkspace({ id: current.id, slug: current.slug });
   return { ok: true };
 }
 
 export async function deletePhotoAction(photoId: string) {
   const user = await requireUser();
+  if (!isUuid(photoId)) return { error: "Foto não encontrada." };
   const [photo] = await db.select().from(photos).where(eq(photos.id, photoId)).limit(1);
   if (!photo) return { error: "Foto não encontrada." };
   const current = await getDeclarationById(photo.declarationId);
@@ -258,12 +280,13 @@ export async function deletePhotoAction(photoId: string) {
     await db.update(photos).set({ sortOrder: index }).where(eq(photos.id, item.id));
   }
 
-  revalidatePath(`/dashboard/${current.id}`);
+  revalidateUserWorkspace({ id: current.id, slug: current.slug });
   return { ok: true };
 }
 
 export async function reorderPhotosAction(declarationId: string, orderedIds: string[]) {
   const user = await requireUser();
+  if (!isUuid(declarationId)) return { error: "Sem permissão." };
   const current = await getDeclarationById(declarationId);
   if (!current || current.userId !== user.id) return { error: "Sem permissão." };
 
@@ -277,12 +300,13 @@ export async function reorderPhotosAction(declarationId: string, orderedIds: str
       .where(and(eq(photos.id, id), eq(photos.declarationId, declarationId)));
   }
 
-  revalidatePath(`/dashboard/${declarationId}`);
+  revalidateUserWorkspace({ id: declarationId, slug: current.slug });
   return { ok: true };
 }
 
 export async function publishDeclarationAction(id: string) {
   const user = await requireUser();
+  if (!isUuid(id)) return { error: "Não encontrada." };
   const current = await getDeclarationById(id);
   if (!current || current.userId !== user.id) return { error: "Não encontrada." };
   if (!current.coupleName.trim() || !current.title.trim()) {
@@ -298,26 +322,59 @@ export async function publishDeclarationAction(id: string) {
     .set({ published: true, slug, updatedAt: new Date() })
     .where(eq(declarations.id, id));
 
-  revalidatePath("/dashboard");
-  revalidatePath(`/nos/${slug}`);
+  revalidateUserWorkspace({ id, slug, previousSlug: current.slug });
   return { ok: true, slug };
 }
 
 export async function unpublishDeclarationAction(id: string) {
   const user = await requireUser();
+  if (!isUuid(id)) return { error: "Não encontrada." };
   const current = await getDeclarationById(id);
   if (!current || current.userId !== user.id) return { error: "Não encontrada." };
   await db
     .update(declarations)
     .set({ published: false, updatedAt: new Date() })
     .where(eq(declarations.id, id));
-  revalidatePath("/dashboard");
+  revalidateUserWorkspace({ id, slug: current.slug });
   return { ok: true };
 }
 
+export async function deleteDeclarationAction(id: string) {
+  const user = await requireUser();
+  if (!isUuid(id)) return { error: "Álbum não encontrado." };
+  const key = await clientKey();
+  if (!rateLimit(`delete:${user.id}:${key}`, 8, 15 * 60 * 1000)) {
+    return { error: RATE_LIMITED };
+  }
+
+  const [row] = await db
+    .select()
+    .from(declarations)
+    .where(and(eq(declarations.id, id), eq(declarations.userId, user.id)))
+    .limit(1);
+  if (!row) return { error: "Álbum não encontrado." };
+
+  const photoRows = await db.select().from(photos).where(eq(photos.declarationId, id));
+
+  await db.delete(replies).where(eq(replies.declarationId, id));
+  await db.delete(photos).where(eq(photos.declarationId, id));
+  await db.delete(declarations).where(eq(declarations.id, id));
+
+  for (const photo of photoRows) {
+    await deleteUpload(photo.imageUrl);
+  }
+  await deleteUpload(row.soundtrackUrl);
+
+  revalidateUserWorkspace({ id, slug: row.slug });
+  redirect("/dashboard");
+}
+
 export async function getPublicDeclarationAction(slug: string) {
+  const safeSlug = publicSlug(slug);
+  if (!safeSlug) return { status: "missing" as const };
+
   await ensureSeeded();
-  const found = await getDeclarationBySlug(slug);
+  const found = await getDeclarationBySlug(safeSlug);
   if (!found || !found.row.published) return { status: "missing" as const };
 
   if (!(await isUnlocked(found.row.slug, found.row.passwordHash))) {
@@ -338,12 +395,15 @@ export async function getPublicDeclarationAction(slug: string) {
 }
 
 export async function unlockDeclarationAction(slug: string, password: string) {
+  const safeSlug = publicSlug(slug);
+  if (!safeSlug) return { error: "Não foi possível abrir este envelope." };
+
   const key = await clientKey();
-  if (!rateLimit(`unlock:${key}:${slug}`, 8, 15 * 60 * 1000)) {
+  if (!rateLimit(`unlock:${key}:${safeSlug}`, 8, 15 * 60 * 1000)) {
     return { error: RATE_LIMITED };
   }
 
-  const found = await getDeclarationBySlug(slug);
+  const found = await getDeclarationBySlug(safeSlug);
   if (!found || !found.row.published || !found.row.passwordHash) {
     return { error: "Não foi possível abrir este envelope." };
   }
@@ -362,7 +422,13 @@ export async function unlockDeclarationAction(slug: string, password: string) {
 }
 
 export async function recordViewAction(slug: string) {
-  const found = await getDeclarationBySlug(slug);
+  const safeSlug = publicSlug(slug);
+  if (!safeSlug) return;
+
+  const key = await clientKey();
+  if (!rateLimit(`view:${key}:${safeSlug}`, 3, 10 * 60 * 1000)) return;
+
+  const found = await getDeclarationBySlug(safeSlug);
   if (!found || !found.row.published) return;
   if (!(await isUnlocked(found.row.slug, found.row.passwordHash))) return;
 
@@ -370,18 +436,21 @@ export async function recordViewAction(slug: string) {
     .update(declarations)
     .set({
       lastViewedAt: new Date(),
-      viewCount: found.row.viewCount + 1,
+      viewCount: sql`${declarations.viewCount} + 1`,
     })
     .where(eq(declarations.id, found.row.id));
 }
 
 export async function sendReplyAction(slug: string, message: string) {
+  const safeSlug = publicSlug(slug);
+  if (!safeSlug) return { error: "Declaração não encontrada." };
+
   const key = await clientKey();
-  if (!rateLimit(`reply:${key}:${slug}`, 5, 10 * 60 * 1000)) {
+  if (!rateLimit(`reply:${key}:${safeSlug}`, 5, 10 * 60 * 1000)) {
     return { error: RATE_LIMITED };
   }
 
-  const found = await getDeclarationBySlug(slug);
+  const found = await getDeclarationBySlug(safeSlug);
   if (!found || !found.row.published) return { error: "Declaração não encontrada." };
   if (!(await isUnlocked(found.row.slug, found.row.passwordHash))) {
     return { error: "Desbloqueie o envelope para responder." };
@@ -396,14 +465,34 @@ export async function sendReplyAction(slug: string, message: string) {
     message: text,
   });
 
-  revalidatePath("/dashboard");
+  revalidateUserWorkspace({ slug: found.row.slug });
+  return { ok: true };
+}
+
+export async function markRepliesReadAction() {
+  await requireUser();
+  const cookieStore = await cookies();
+  cookieStore.set(REPLIES_SEEN_COOKIE, new Date().toISOString(), {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 400,
+    secure: process.env.NODE_ENV === "production",
+  });
+  revalidateUserWorkspace();
   return { ok: true };
 }
 
 export async function uploadSoundtrackAction(formData: FormData) {
   const user = await requireUser();
+  const key = await clientKey();
+  if (!rateLimit(`upload-audio:${user.id}:${key}`, 8, 15 * 60 * 1000)) {
+    return { error: RATE_LIMITED };
+  }
+
   try {
     const declarationId = String(formData.get("declarationId") ?? "");
+    if (!isUuid(declarationId)) return { error: "Não encontrada." };
     const current = await getDeclarationById(declarationId);
     if (!current || current.userId !== user.id) return { error: "Não encontrada." };
 
@@ -437,7 +526,7 @@ export async function uploadSoundtrackAction(formData: FormData) {
       })
       .where(eq(declarations.id, declarationId));
 
-    revalidatePath(`/dashboard/${declarationId}`);
+    revalidateUserWorkspace({ id: declarationId, slug: current.slug });
     return { ok: true, url: audioPublicUrl(declarationId, storedUrl), name: safeName };
   } catch (error) {
     console.error("uploadSoundtrackAction");

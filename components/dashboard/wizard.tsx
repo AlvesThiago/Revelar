@@ -16,6 +16,7 @@ import {
   uploadSoundtrackAction,
   type DeclarationDraft,
 } from "@/app/actions/declarations";
+import { DeleteAlbumButton } from "@/components/dashboard/delete-album-button";
 import { PhotoStudio, filesToCompressed } from "@/components/dashboard/photo-studio";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -271,7 +272,7 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
                 onClick={() => go(index)}
                 className={cn(
                   "w-full rounded-full px-3 py-1.5 text-center",
-                  index === step ? "bg-graphite text-cream" : "bg-blush text-graphite"
+                  index === step ? "btn-love border-0" : "bg-blush text-graphite"
                 )}
               >
                 {index + 1}. {label}
@@ -463,7 +464,7 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
                 href={`https://wa.me/?text=${encodeURIComponent(`Alguém especial te enviou uma surpresa: ${publicUrl}`)}`}
                 target="_blank"
                 rel="noreferrer"
-                className={cn(buttonVariants(), "bg-graphite text-cream")}
+                className={cn(buttonVariants(), "btn-love border-0")}
               >
                 <Share2 />
                 Enviar no WhatsApp
@@ -475,7 +476,7 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
               ) : null}
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button type="button" className="bg-graphite text-cream" disabled={busy} onClick={() => void publish()}>
+              <Button type="button" className="btn-love border-0" disabled={busy} onClick={() => void publish()}>
                 {record.published ? "Atualizar publicação" : "Publicar declaração"}
               </Button>
               {record.published ? (
@@ -490,6 +491,7 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
                   Despublicar
                 </Button>
               ) : null}
+              <DeleteAlbumButton id={record.id} name={record.coupleName || record.title} />
             </div>
           </div>
           <div className="neu-card space-y-4 rounded-3xl p-6">
@@ -513,7 +515,12 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
               </p>
             </div>
             <div>
-              <h3 className="font-medium">Respostas recebidas</h3>
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="font-medium">Respostas recebidas</h3>
+                <Link href="/dashboard/respostas" className="text-xs text-rose hover:underline">
+                  Ver todas
+                </Link>
+              </div>
               {record.replies.length === 0 ? (
                 <p className="mt-2 text-sm text-muted-foreground">
                   Ainda não chegou nenhuma mensagem de volta.
@@ -550,7 +557,7 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
           {step < 3 ? (
             <button
               type="button"
-              className={cn(buttonVariants(), "bg-graphite text-cream")}
+              className={cn(buttonVariants(), "btn-love border-0")}
               onClick={() => go(step + 1)}
             >
               Continuar

@@ -3,18 +3,27 @@ import { createDeclarationAction } from "@/app/actions/declarations";
 import { SiteHeader } from "@/components/site-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PolaroidCard } from "@/components/polaroid-card";
+import { DeleteAlbumButton } from "@/components/dashboard/delete-album-button";
+import { ReplyBanner } from "@/components/dashboard/reply-inbox";
 import { formatLastSeen } from "@/lib/dates";
-import { listDeclarationsForUser } from "@/lib/queries";
+import { getInboxForUser, listDeclarationsForUser } from "@/lib/queries";
 import { requireUser } from "@/lib/session";
 import { ensureSeeded } from "@/lib/seed";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Painel" };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ aviso?: string }>;
+}) {
   const user = await requireUser();
   await ensureSeeded();
+  const { aviso } = await searchParams;
   const items = await listDeclarationsForUser(user.id);
+  const replies = await getInboxForUser(user.id);
+  const unread = replies.filter((item) => !item.readAt).length;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -22,15 +31,27 @@ export default async function DashboardPage() {
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <p className="font-hand text-2xl text-rose">olá, {user.name?.split(" ")[0]}</p>
+            <p className="font-hand text-2xl text-rose">olá, {user.name?.split(" ")[0]} ♥</p>
             <h1 className="text-3xl font-semibold text-graphite">Suas declarações</h1>
           </div>
-          <form action={createDeclarationAction}>
-            <Button type="submit" className="h-11 bg-graphite text-cream">
-              Nova declaração
-            </Button>
-          </form>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/dashboard/respostas" className={cn(buttonVariants({ variant: "outline" }), "h-11")}>
+              Respostas
+              {unread > 0 ? ` (${unread})` : replies.length > 0 ? ` (${replies.length})` : ""}
+            </Link>
+            <form action={createDeclarationAction}>
+              <Button type="submit" className="btn-love h-11 border-0">
+                Nova declaração
+              </Button>
+            </form>
+          </div>
         </div>
+        {aviso === "limite" ? (
+          <p className="mt-6 text-sm text-rose">
+            Muitas tentativas. Espere um pouco e tente de novo.
+          </p>
+        ) : null}
+        <ReplyBanner unread={unread} className="mt-6" />
 
         {items.length === 0 ? (
           <div className="neu-card mt-10 rounded-3xl px-6 py-16 text-center">
@@ -45,8 +66,8 @@ export default async function DashboardPage() {
               <li key={item.id} className="neu-card overflow-hidden rounded-3xl p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {item.published ? "No ar" : "Rascunho"}
+                    <p className={cn("font-hand text-lg leading-none", item.published ? "text-rose" : "text-muted-foreground")}>
+                      {item.published ? "no ar ♥" : "ainda é rascunho"}
                     </p>
                     <h2 className="text-xl font-semibold text-graphite">
                       {item.coupleName || "Sem nome ainda"}
@@ -73,9 +94,17 @@ export default async function DashboardPage() {
                     : ""}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Link href={`/dashboard/${item.id}`} className={cn(buttonVariants(), "bg-graphite text-cream")}>
+                  <Link href={`/dashboard/${item.id}`} className={cn(buttonVariants(), "btn-love border-0")}>
                     Continuar no estúdio
                   </Link>
+                  {item.replies.length > 0 ? (
+                    <Link
+                      href="/dashboard/respostas"
+                      className={cn(buttonVariants({ variant: "outline" }))}
+                    >
+                      {item.replies.length} {item.replies.length === 1 ? "resposta" : "respostas"}
+                    </Link>
+                  ) : null}
                   {item.published ? (
                     <>
                       <Link href={`/nos/${item.slug}`} className={cn(buttonVariants({ variant: "outline" }))}>
@@ -89,6 +118,7 @@ export default async function DashboardPage() {
                       </Link>
                     </>
                   ) : null}
+                  <DeleteAlbumButton id={item.id} name={item.coupleName || item.title} />
                 </div>
               </li>
             ))}

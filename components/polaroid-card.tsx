@@ -15,6 +15,7 @@ type PolaroidCardProps = {
   size?: "sm" | "md" | "lg";
   onClick?: () => void;
   interactive?: boolean;
+  compactCaption?: boolean;
 };
 
 const sizes = {
@@ -34,12 +35,14 @@ export function PolaroidCard({
   size = "md",
   onClick,
   interactive = true,
+  compactCaption = false,
 }: PolaroidCardProps) {
   return (
     <motion.figure
       data-polaroid
       className={cn(
-        "polaroid-frame relative flex w-full flex-col rounded-[4px] px-3 pt-3 pb-4",
+        "polaroid-frame relative flex w-full flex-col rounded-[4px]",
+        compactCaption ? "px-2 pt-2 pb-3" : "px-3 pt-3 pb-4",
         sizes[size],
         className
       )}
@@ -70,7 +73,14 @@ export function PolaroidCard({
           </div>
         )}
       </div>
-      <figcaption className="font-hand mt-3 min-h-10 whitespace-pre-wrap break-words text-center text-[1.35rem] leading-snug text-graphite">
+      <figcaption
+        className={cn(
+          "font-hand whitespace-pre-wrap break-words text-center leading-snug text-graphite",
+          compactCaption
+            ? "mt-2 min-h-8 text-[1.05rem]"
+            : "mt-3 min-h-10 text-[1.35rem]"
+        )}
+      >
         {caption || "escreva a declaração desta memória"}
       </figcaption>
     </motion.figure>

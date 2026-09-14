@@ -1,18 +1,14 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { eq } from "drizzle-orm";
+import { authConfig } from "@/lib/auth.config";
+import { verifyPasswordForAccount } from "@/lib/crypto";
 import { db } from "@/lib/db";
 import { users } from "@/lib/schema";
-import { verifyPassword } from "@/lib/crypto";
 import { ensureSeeded } from "@/lib/seed";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  trustHost: true,
-  secret: process.env.AUTH_SECRET,
-  session: { strategy: "jwt" },
-  pages: {
-    signIn: "/entrar",
-  },
+  ...authConfig,
   providers: [
     Credentials({
       name: "credentials",
@@ -34,7 +30,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           .where(eq(users.email, email))
           .limit(1);
 
-        if (!user || !verifyPassword(password, user.passwordHash)) {
+        if (!verifyPasswordForAccount(password, user?.passwordHash)) {
           return null;
         }
 
@@ -46,16 +42,4 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    jwt({ token, user }) {
-      if (user?.id) token.id = user.id;
-      return token;
-    },
-    session({ session, token }) {
-      if (session.user && typeof token.id === "string") {
-        session.user.id = token.id;
-      }
-      return session;
-    },
-  },
 });

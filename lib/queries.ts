@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { cookies } from "next/headers";
 import { asc, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { declarations, photos, replies, users } from "@/lib/schema";
@@ -8,6 +10,7 @@ import type {
   PhotoFilter,
   PhotoRecord,
   PublicDeclaration,
+  ReplyNotification,
   ReplyRecord,
   RevealEffect,
   SoundtrackType,
@@ -71,7 +74,7 @@ export function serializeDeclaration(
   };
 }
 
-export async function getDeclarationById(id: string) {
+export const getDeclarationById = cache(async function getDeclarationById(id: string) {
   const [row] = await db
     .select()
     .from(declarations)
@@ -89,9 +92,9 @@ export async function getDeclarationById(id: string) {
     .where(eq(replies.declarationId, id))
     .orderBy(desc(replies.createdAt));
   return serializeDeclaration(row, photoRows, replyRows);
-}
+});
 
-export async function getDeclarationBySlug(slug: string) {
+export const getDeclarationBySlug = cache(async function getDeclarationBySlug(slug: string) {
   const [row] = await db
     .select()
     .from(declarations)
@@ -104,9 +107,9 @@ export async function getDeclarationBySlug(slug: string) {
     .where(eq(photos.declarationId, row.id))
     .orderBy(asc(photos.sortOrder));
   return { row, photos: photoRows };
-}
+});
 
-export async function listDeclarationsForUser(userId: string) {
+export const listDeclarationsForUser = cache(async function listDeclarationsForUser(userId: string) {
   const rows = await db
     .select()
     .from(declarations)
@@ -128,7 +131,7 @@ export async function listDeclarationsForUser(userId: string) {
     result.push(serializeDeclaration(row, photoRows, replyRows));
   }
   return result;
-}
+});
 
 export function toPublicDeclaration(
   record: DeclarationRecord,
@@ -143,11 +146,58 @@ export function toPublicDeclaration(
   };
 }
 
-export async function getOwnerName(userId: string) {
+export const listReplyNotifications = cache(async function listReplyNotifications(
+  userId: string
+): Promise<ReplyNotification[]> {
+  const rows = await db
+    .select({
+      id: replies.id,
+      message: replies.message,
+      createdAt: replies.createdAt,
+      declarationId: declarations.id,
+      coupleName: declarations.coupleName,
+      title: declarations.title,
+    })
+    .from(replies)
+    .innerJoin(declarations, eq(replies.declarationId, declarations.id))
+    .where(eq(declarations.userId, userId))
+    .orderBy(desc(replies.createdAt))
+    .limit(80);
+
+  return rows.map((row) => ({
+    id: row.id,
+    message: row.message,
+    createdAt: row.createdAt.toISOString(),
+    readAt: null,
+    declarationId: row.declarationId,
+    coupleName: row.coupleName,
+    title: row.title,
+  }));
+});
+
+export const REPLIES_SEEN_COOKIE = "revelar_replies_seen";
+
+export function markReplyReadState(
+  items: ReplyNotification[],
+  seenAt: string | null
+): ReplyNotification[] {
+  return items.map((item) => ({
+    ...item,
+    readAt: seenAt && item.createdAt <= seenAt ? seenAt : null,
+  }));
+}
+
+export const getInboxForUser = cache(async function getInboxForUser(userId: string) {
+  const cookieStore = await cookies();
+  const seen = cookieStore.get(REPLIES_SEEN_COOKIE)?.value ?? null;
+  return markReplyReadState(await listReplyNotifications(userId), seen);
+});
+
+export const getOwnerName = cache(async function getOwnerName(userId: string) {
   const [user] = await db
     .select({ name: users.name })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
   return user?.name ?? "";
-}
+});

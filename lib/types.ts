@@ -30,6 +30,16 @@ export type ReplyRecord = {
   createdAt: string;
 };
 
+export type ReplyNotification = {
+  id: string;
+  message: string;
+  createdAt: string;
+  readAt: string | null;
+  declarationId: string;
+  coupleName: string;
+  title: string;
+};
+
 export type DeclarationRecord = {
   id: string;
   userId: string;
