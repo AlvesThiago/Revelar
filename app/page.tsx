@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CameraMockup } from "@/components/camera-mockup";
 import { LoveBackdrop } from "@/components/love-backdrop";
 import { PolaroidCard } from "@/components/polaroid-card";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -61,7 +62,7 @@ export default function HomePage() {
           <CameraMockup />
         </section>
 
-        <section className="border-y border-[#f0cfc8]/80 bg-blush/50">
+        <section id="como-funciona" className="border-y border-[#f0cfc8]/80 bg-blush/50">
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-3">
             {STEPS.map((step, index) => (
               <article
@@ -80,7 +81,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+        <section id="memorias" className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
           <div className="mb-10 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
             <div>
               <p className="font-hand text-2xl text-rose">demonstração viva</p>
@@ -107,7 +108,7 @@ export default function HomePage() {
               rotate={4}
             />
             <PolaroidCard
-              imageUrl="https://images.unsplash.com/photo-1529333166437-7750c2d54e7b?auto=format&fit=crop&w=900&q=80"
+              imageUrl="https://images.unsplash.com/photo-1529634806980-85c3dd6d34ac?auto=format&fit=crop&w=900&q=80"
               caption="ainda bem que insistimos"
               filter="vintage"
               rotate={-2}
@@ -115,12 +116,7 @@ export default function HomePage() {
           </div>
         </section>
       </main>
-      <footer className="relative z-10 border-t border-[#f0cfc8]/80 px-4 py-8 text-center">
-        <p className="font-hand text-2xl text-rose">nós, para sempre</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Revelar · polaroids digitais para quem guarda o que importa
-        </p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

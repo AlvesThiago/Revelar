@@ -16,12 +16,20 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
+  applicationName: "Revelar",
   title: {
     default: "Revelar — declarações em polaroid",
     template: "%s · Revelar",
   },
   description:
     "Transforme suas memórias em uma declaração inesquecível. Monte polaroids, escreva cartas e compartilhe um link só de vocês.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-icon.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

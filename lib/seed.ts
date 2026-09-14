@@ -16,7 +16,7 @@ const EXAMPLE_PHOTOS = [
   },
   {
     imageUrl:
-      "https://images.unsplash.com/photo-1522673607200-164d71b6623e?auto=format&fit=crop&w=1400&q=80",
+      "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?auto=format&fit=crop&w=1400&q=80",
     caption: "A primeira viagem. Você riu o caminho inteiro.",
     filter: "natural",
   },
@@ -40,7 +40,7 @@ const EXAMPLE_PHOTOS = [
   },
   {
     imageUrl:
-      "https://images.unsplash.com/photo-1529333166437-7750c2d54e7b?auto=format&fit=crop&w=1400&q=80",
+      "https://images.unsplash.com/photo-1529634806980-85c3dd6d34ac?auto=format&fit=crop&w=1400&q=80",
     caption: "Ainda bem que o universo insistiu.",
     filter: "natural",
   },
@@ -96,7 +96,10 @@ async function seedIfNeeded() {
     .where(eq(declarations.slug, EXAMPLE_SLUG))
     .limit(1);
 
-  if (existingExample) return;
+  if (existingExample) {
+    await repairExamplePhotoUrls(existingExample.id);
+    return;
+  }
 
   const declarationId = newId();
   const start = new Date();
@@ -131,4 +134,27 @@ async function seedIfNeeded() {
       filter: photo.filter,
     }))
   );
+}
+
+function replacementPhotoUrl(imageUrl: string) {
+  if (imageUrl.includes("photo-1529333166437-7750c2d54e7b")) {
+    return "https://images.unsplash.com/photo-1529634806980-85c3dd6d34ac?auto=format&fit=crop&w=1400&q=80";
+  }
+  if (imageUrl.includes("photo-1522673607200-164d71b6623e")) {
+    return "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?auto=format&fit=crop&w=1400&q=80";
+  }
+  return null;
+}
+
+async function repairExamplePhotoUrls(declarationId: string) {
+  const rows = await db
+    .select({ id: photos.id, imageUrl: photos.imageUrl })
+    .from(photos)
+    .where(eq(photos.declarationId, declarationId));
+
+  for (const row of rows) {
+    const next = replacementPhotoUrl(row.imageUrl);
+    if (!next) continue;
+    await db.update(photos).set({ imageUrl: next }).where(eq(photos.id, row.id));
+  }
 }
