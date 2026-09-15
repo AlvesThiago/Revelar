@@ -1,5 +1,18 @@
-import { startCheckoutAction } from "@/app/actions/billing";
+"use client";
+
+import { useActionState, useEffect } from "react";
+import { useFormStatus } from "react-dom";
+import { startCheckoutAction, type CheckoutState } from "@/app/actions/billing";
 import { Button } from "@/components/ui/button";
+
+function PayButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending} className="btn-love h-11 w-full border-0 sm:w-auto">
+      {pending ? "Abrindo o Mercado Pago..." : "Pagar com Mercado Pago"}
+    </Button>
+  );
+}
 
 export function AlbumCheckout({
   declarationId,
@@ -12,8 +25,15 @@ export function AlbumCheckout({
   enabled: boolean;
   hint?: string;
 }) {
+  const [state, action] = useActionState(startCheckoutAction, {} as CheckoutState);
+
+  useEffect(() => {
+    if (state.url) window.location.assign(state.url);
+  }, [state.url]);
+
   const message =
-    hint === "erro"
+    state.error ||
+    (hint === "erro"
       ? "O pagamento não foi concluído. Você pode tentar de novo."
       : hint === "pendente"
         ? "O pagamento ainda está em análise. Assim que cair, o link é liberado."
@@ -23,7 +43,9 @@ export function AlbumCheckout({
             ? "Muitas tentativas. Espere um pouco e tente de novo."
             : hint === "config"
               ? "O checkout ainda não está configurado neste ambiente."
-              : null;
+              : !enabled
+                ? "Falta o Access Token do Mercado Pago na Vercel. Depois de colar, faça um novo deploy."
+                : null);
 
   return (
     <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -44,21 +66,10 @@ export function AlbumCheckout({
             PIX ou cartão no Mercado Pago. Um pagamento libera este álbum para sempre.
           </p>
         </div>
-        {!enabled && !message ? (
-          <p className="text-sm text-rose">
-            O checkout ainda não está configurado neste ambiente.
-          </p>
-        ) : null}
         {message ? <p className="text-sm text-rose">{message}</p> : null}
-        <form action={startCheckoutAction}>
+        <form action={action}>
           <input type="hidden" name="declarationId" value={declarationId} />
-          <Button
-            type="submit"
-            disabled={!enabled}
-            className="btn-love h-11 w-full border-0 sm:w-auto"
-          >
-            Pagar com Mercado Pago
-          </Button>
+          <PayButton />
         </form>
       </div>
       <div className="neu-card space-y-3 rounded-3xl p-6">

@@ -27,7 +27,7 @@ const securityHeaders = [
       isProd ? "connect-src 'self'" : "connect-src 'self' ws: wss:",
       "object-src 'none'",
       "base-uri 'self'",
-      "form-action 'self' https://accounts.google.com https://www.mercadopago.com https://www.mercadopago.com.br https://sandbox.mercadopago.com.br",
+      "form-action 'self' https://accounts.google.com https://www.mercadopago.com https://www.mercadopago.com.br https://sandbox.mercadopago.com.br https://www.mercadopago.com.ar https://mpago.la",
       "frame-ancestors 'none'",
       ...(isProd ? ["upgrade-insecure-requests"] : []),
     ].join("; "),

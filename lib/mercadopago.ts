@@ -1,10 +1,10 @@
 import { createHmac, timingSafeEqual } from "crypto";
-import { albumPriceAmount, appBaseUrl } from "@/lib/billing";
+import { albumPriceAmount } from "@/lib/billing";
 
 const API = "https://api.mercadopago.com";
 
 function accessToken() {
-  const token = process.env.MP_ACCESS_TOKEN;
+  const token = process.env.MP_ACCESS_TOKEN?.trim();
   if (!token) throw new Error("MP_ACCESS_TOKEN ausente");
   return token;
 }
@@ -20,6 +20,14 @@ async function mpFetch<T>(path: string, init?: RequestInit): Promise<T> {
     cache: "no-store",
   });
   if (!response.ok) {
+    let detail = "";
+    try {
+      const body = (await response.json()) as { message?: string; error?: string };
+      detail = String(body.message || body.error || "");
+    } catch {
+      detail = "";
+    }
+    console.error("mercadopago", response.status, detail.slice(0, 160));
     throw new Error("Falha ao falar com o Mercado Pago");
   }
   return (await response.json()) as T;
@@ -43,10 +51,12 @@ export async function createAlbumPreference(input: {
   declarationId: string;
   title: string;
   payerEmail?: string | null;
+  baseUrl: string;
 }) {
-  const base = appBaseUrl();
+  const base = input.baseUrl.replace(/\/$/, "");
   const returnUrl = `${base}/dashboard/${input.declarationId}`;
   const itemTitle = input.title.trim() || "Álbum Revellar";
+  const https = base.startsWith("https://");
 
   const preference = await mpFetch<MercadoPagoPreference>("/checkout/preferences", {
     method: "POST",
@@ -56,7 +66,7 @@ export async function createAlbumPreference(input: {
           id: input.declarationId,
           title: itemTitle.slice(0, 120),
           quantity: 1,
-          unit_price: albumPriceAmount(),
+          unit_price: Number(albumPriceAmount().toFixed(2)),
           currency_id: "BRL",
         },
       ],
@@ -68,16 +78,12 @@ export async function createAlbumPreference(input: {
         failure: `${returnUrl}?passo=4&pagamento=erro`,
         pending: `${returnUrl}?passo=4&pagamento=pendente`,
       },
-      auto_return: "approved",
+      ...(https ? { auto_return: "approved" } : {}),
       notification_url: `${base}/api/webhooks/mercadopago`,
-      statement_descriptor: "REVELLAR",
     }),
   });
 
-  const checkoutUrl =
-    process.env.NODE_ENV === "production"
-      ? preference.init_point
-      : preference.sandbox_init_point || preference.init_point;
+  const checkoutUrl = preference.init_point || preference.sandbox_init_point;
 
   if (!checkoutUrl) {
     throw new Error("Checkout do Mercado Pago sem URL");

@@ -1,9 +1,12 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { redirect } from "next/navigation";
 import { applyApprovedPayment } from "@/lib/apply-payment";
-import { albumPriceCents, isMercadoPagoEnabled } from "@/lib/billing";
+import {
+  albumPriceCents,
+  isMercadoPagoEnabled,
+  requestBaseUrl,
+} from "@/lib/billing";
 import { isUuid, newId } from "@/lib/crypto";
 import { db } from "@/lib/db";
 import {
@@ -16,28 +19,44 @@ import { declarations, payments } from "@/lib/schema";
 import { clientKey, rateLimit } from "@/lib/security";
 import { requireUser } from "@/lib/session";
 
-export async function startCheckoutAction(formData: FormData) {
+export type CheckoutState = {
+  error?: string;
+  url?: string;
+};
+
+export async function startCheckoutAction(
+  _prev: CheckoutState,
+  formData: FormData
+): Promise<CheckoutState> {
   const user = await requireUser();
   const id = String(formData.get("declarationId") ?? "");
-  if (!isUuid(id)) redirect("/dashboard");
+  if (!isUuid(id)) return { error: "Álbum não encontrado." };
 
   const key = await clientKey();
   if (!rateLimit(`checkout:${user.id}:${key}`, 8, 15 * 60 * 1000)) {
-    redirect(`/dashboard/${id}?passo=4&pagamento=limite`);
+    return { error: "Muitas tentativas. Espere um pouco e tente de novo." };
   }
   if (!isMercadoPagoEnabled()) {
-    redirect(`/dashboard/${id}?passo=4&pagamento=config`);
+    return {
+      error:
+        "Falta o Access Token do Mercado Pago. Cole MP_ACCESS_TOKEN na Vercel e faça um novo deploy.",
+    };
   }
 
   const record = await getDeclarationById(id);
-  if (!record || record.userId !== user.id) redirect("/dashboard");
-  if (record.paid) redirect(`/dashboard/${id}?passo=4`);
+  if (!record || record.userId !== user.id) {
+    return { error: "Álbum não encontrado." };
+  }
+  if (record.paid) {
+    return { error: "Este álbum já está pago." };
+  }
 
   try {
     const { preferenceId, checkoutUrl } = await createAlbumPreference({
       declarationId: id,
       title: record.coupleName || record.title || "Álbum Revellar",
       payerEmail: user.email,
+      baseUrl: await requestBaseUrl(),
     });
 
     await db.insert(payments).values({
@@ -50,13 +69,13 @@ export async function startCheckoutAction(formData: FormData) {
       amountCents: albumPriceCents(),
     });
 
-    redirect(checkoutUrl);
-  } catch (error) {
-    if (error && typeof error === "object" && "digest" in error) {
-      throw error;
-    }
+    return { url: checkoutUrl };
+  } catch {
     console.error("startCheckoutAction");
-    redirect(`/dashboard/${id}?passo=4&pagamento=erro`);
+    return {
+      error:
+        "Não foi possível abrir o Mercado Pago. Confira o Access Token e se AUTH_URL é o domínio da Vercel.",
+    };
   }
 }
 
