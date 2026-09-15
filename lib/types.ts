@@ -56,6 +56,7 @@ export type DeclarationRecord = {
   slideshowSeconds: number;
   hasPassword: boolean;
   published: boolean;
+  paid: boolean;
   createdAt: string;
   updatedAt: string;
   lastViewedAt: string | null;
@@ -64,7 +65,7 @@ export type DeclarationRecord = {
   replies: ReplyRecord[];
 };
 
-export type PublicDeclaration = Omit<DeclarationRecord, "userId" | "replies"> & {
+export type PublicDeclaration = Omit<DeclarationRecord, "userId" | "replies" | "paid"> & {
   replyToName: string;
 };
 

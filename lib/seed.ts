@@ -1,5 +1,5 @@
 import { randomBytes } from "crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { declarations, photos, users } from "@/lib/schema";
 import { hashPassword, newId } from "@/lib/crypto";
@@ -59,6 +59,11 @@ export async function ensureSeeded() {
 }
 
 async function seedIfNeeded() {
+  await db
+    .update(declarations)
+    .set({ paidAt: new Date() })
+    .where(and(eq(declarations.published, true), isNull(declarations.paidAt)));
+
   const [legacyDemo] = await db
     .select({ id: users.id })
     .from(users)
@@ -122,6 +127,7 @@ async function seedIfNeeded() {
     viewMode: "deck",
     slideshowSeconds: 6,
     published: true,
+    paidAt: new Date(),
   });
 
   await db.insert(photos).values(

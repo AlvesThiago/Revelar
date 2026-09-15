@@ -39,6 +39,9 @@ Baixe `revelar.zip` (gerado neste ambiente), extraia para `~/Projetos/revelar` e
    - `DATABASE_URL` — string do [Neon](https://neon.tech)
    - `AUTH_SECRET` — `openssl rand -base64 32`
    - `AUTH_GOOGLE_ID` e `AUTH_GOOGLE_SECRET` — no [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crie um ID de cliente OAuth **Web**. Origens autorizadas: `http://127.0.0.1:3000`. URI de redirecionamento: `http://127.0.0.1:3000/api/auth/callback/google`. Em produção, acrescente o domínio da Vercel nas duas listas.
+   - `ALBUM_PRICE_BRL` — preço de cada álbum (padrão `29.90`)
+   - `MP_ACCESS_TOKEN` — Access Token da aplicação Checkout Pro no [Mercado Pago Developers](https://www.mercadopago.com.br/developers/panel/app). Use o token de teste enquanto desenvolve.
+   - `MP_WEBHOOK_SECRET` — chave secreta das notificações Webhooks da mesma aplicação. URL: `https://seu-dominio/api/webhooks/mercadopago`
 3. Publique o schema: `npm run db:push`
 4. Inicie o app: `npm run dev`
 
@@ -53,6 +56,7 @@ O `DATABASE_URL` fica só em `.env.local` (não vai para o git). Depois de troca
 - Landing com câmera instantânea e polaroids de exemplo
 - Cadastro, login (e-mail/senha ou Google) e sessão via Auth.js
 - Wizard em 4 etapas: dados do casal, estúdio (até 12 fotos), revelação/tema, publicação
+- Pagamento por álbum no Mercado Pago (PIX ou cartão) antes do link e do QR
 - Link único `/nos/[slug]`, QR com coração, copiar e WhatsApp
 - Página do casal com envelope, corações, player com fade-in, contador vivo e 3 modos (mesa, álbum, slideshow)
 - Senha opcional no envelope, respostas de volta e métricas de visualização

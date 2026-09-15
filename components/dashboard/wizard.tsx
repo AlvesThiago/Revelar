@@ -16,6 +16,7 @@ import {
   uploadSoundtrackAction,
   type DeclarationDraft,
 } from "@/app/actions/declarations";
+import { AlbumCheckout } from "@/components/dashboard/album-checkout";
 import { DeleteAlbumButton } from "@/components/dashboard/delete-album-button";
 import { PhotoStudio, filesToCompressed } from "@/components/dashboard/photo-studio";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -48,9 +49,18 @@ const STEPS = [
 type WizardProps = {
   initial: DeclarationRecord;
   initialStep?: number;
+  priceLabel: string;
+  paymentsEnabled: boolean;
+  paymentHint?: string;
 };
 
-export function Wizard({ initial, initialStep = 0 }: WizardProps) {
+export function Wizard({
+  initial,
+  initialStep = 0,
+  priceLabel,
+  paymentsEnabled,
+  paymentHint,
+}: WizardProps) {
   const router = useRouter();
   const [step, setStep] = useState(initialStep);
   const [record, setRecord] = useState(initial);
@@ -74,6 +84,10 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
   }, [publicPath]);
 
   useEffect(() => {
+    if (!record.paid) {
+      setQr("");
+      return;
+    }
     void QRCode.toDataURL(publicUrl, {
       errorCorrectionLevel: "H",
       margin: 1,
@@ -101,7 +115,7 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
         setQr(canvas.toDataURL("image/png"));
       };
     });
-  }, [publicUrl]);
+  }, [publicUrl, record.paid]);
 
   function draft(): DeclarationDraft {
     return {
@@ -459,7 +473,16 @@ export function Wizard({ initial, initialStep = 0 }: WizardProps) {
         </section>
       ) : null}
 
-      {step === 3 ? (
+      {step === 3 && !record.paid ? (
+        <AlbumCheckout
+          declarationId={record.id}
+          priceLabel={priceLabel}
+          enabled={paymentsEnabled}
+          hint={paymentHint}
+        />
+      ) : null}
+
+      {step === 3 && record.paid ? (
         <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="neu-card space-y-4 rounded-3xl p-6">
             <h2 className="text-lg font-semibold">Link exclusivo</h2>

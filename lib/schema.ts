@@ -36,6 +36,7 @@ export const declarations = pgTable("declarations", {
   slideshowSeconds: integer("slideshow_seconds").notNull().default(5),
   passwordHash: text("password_hash"),
   published: boolean("published").notNull().default(false),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -55,6 +56,26 @@ export const photos = pgTable("photos", {
   imageUrl: text("image_url").notNull(),
   caption: text("caption").notNull().default(""),
   filter: text("filter").notNull().default("natural"),
+});
+
+export const payments = pgTable("payments", {
+  id: text("id").primaryKey(),
+  declarationId: text("declaration_id")
+    .notNull()
+    .references(() => declarations.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull().default("mercadopago"),
+  preferenceId: text("preference_id"),
+  paymentId: text("payment_id").unique(),
+  status: text("status").notNull().default("pending"),
+  amountCents: integer("amount_cents").notNull(),
+  currency: text("currency").notNull().default("BRL"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
 });
 
 export const replies = pgTable("replies", {
@@ -79,6 +100,7 @@ export const declarationsRelations = relations(declarations, ({ one, many }) => 
   }),
   photos: many(photos),
   replies: many(replies),
+  payments: many(payments),
 }));
 
 export const photosRelations = relations(photos, ({ one }) => ({

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { revalidateUserWorkspace } from "@/lib/cache";
 import { hashPassword, isUuid, newId, verifyPassword } from "@/lib/crypto";
 import { db } from "@/lib/db";
-import { declarations, photos, replies } from "@/lib/schema";
+import { declarations, payments, photos, replies } from "@/lib/schema";
 import {
   getDeclarationById,
   getDeclarationBySlug,
@@ -41,7 +41,8 @@ import {
 } from "@/lib/safe-url";
 import { deleteUpload, saveUpload } from "@/lib/storage";
 import { requireUser } from "@/lib/session";
-import { sanitizePublicSlug, slugifyCoupleName } from "@/lib/slug";
+import { uniqueSlugFromCouple } from "@/lib/publish";
+import { sanitizePublicSlug } from "@/lib/slug";
 import { ensureSeeded } from "@/lib/seed";
 import type {
   PhotoFilter,
@@ -56,15 +57,7 @@ function publicSlug(value: string) {
 }
 
 async function uniqueSlug(base: string, ignoreId?: string) {
-  const root = slugifyCoupleName(base);
-  let candidate = root;
-  let n = 2;
-  while (true) {
-    const found = await getDeclarationBySlug(candidate);
-    if (!found || found.row.id === ignoreId) return candidate;
-    candidate = `${root}-${n}`;
-    n += 1;
-  }
+  return uniqueSlugFromCouple(base, ignoreId);
 }
 
 async function isUnlocked(slug: string, passwordHash: string | null) {
@@ -315,6 +308,9 @@ export async function publishDeclarationAction(id: string) {
   if (current.photos.length === 0) {
     return { error: "Revele pelo menos uma foto para publicar." };
   }
+  if (!current.paid) {
+    return { error: "Pague o álbum para liberar o link e o QR." };
+  }
 
   const slug = await uniqueSlug(current.coupleName, id);
   await db
@@ -358,6 +354,7 @@ export async function deleteDeclarationAction(id: string) {
 
   await db.delete(replies).where(eq(replies.declarationId, id));
   await db.delete(photos).where(eq(photos.declarationId, id));
+  await db.delete(payments).where(eq(payments.declarationId, id));
   await db.delete(declarations).where(eq(declarations.id, id));
 
   for (const photo of photoRows) {

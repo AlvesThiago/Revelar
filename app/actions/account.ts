@@ -12,7 +12,7 @@ import {
 import { revalidateUserWorkspace } from "@/lib/cache";
 import { hashPassword, verifyPasswordForAccount } from "@/lib/crypto";
 import { db } from "@/lib/db";
-import { declarations, photos, replies, users } from "@/lib/schema";
+import { declarations, payments, photos, replies, users } from "@/lib/schema";
 import { RATE_LIMITED, clientKey, rateLimit } from "@/lib/security";
 import { requireUser } from "@/lib/session";
 import { deleteUpload } from "@/lib/storage";
@@ -168,6 +168,7 @@ export async function deleteAccountAction(
       .where(eq(photos.declarationId, album.id));
     await db.delete(replies).where(eq(replies.declarationId, album.id));
     await db.delete(photos).where(eq(photos.declarationId, album.id));
+    await db.delete(payments).where(eq(payments.declarationId, album.id));
     await db.delete(declarations).where(eq(declarations.id, album.id));
     for (const photo of photoRows) {
       await deleteUpload(photo.imageUrl);

@@ -70,7 +70,11 @@ export default async function DashboardPage({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className={cn("font-hand text-lg leading-none", item.published ? "text-rose" : "text-muted-foreground")}>
-                      {item.published ? "no ar ♥" : "ainda é rascunho"}
+                      {item.published
+                        ? "no ar ♥"
+                        : item.paid
+                          ? "pago, ainda é rascunho"
+                          : "ainda é rascunho"}
                     </p>
                     <h2 className="text-xl font-semibold text-graphite">
                       {item.coupleName || "Sem nome ainda"}
@@ -120,7 +124,14 @@ export default async function DashboardPage({
                         Compartilhar
                       </Link>
                     </>
-                  ) : null}
+                  ) : (
+                    <Link
+                      href={`/dashboard/${item.id}?passo=4`}
+                      className={cn(buttonVariants({ variant: "outline" }))}
+                    >
+                      {item.paid ? "Publicar" : "Liberar link"}
+                    </Link>
+                  )}
                   <DeleteAlbumButton id={item.id} name={item.coupleName || item.title} />
                 </div>
               </li>

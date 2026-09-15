@@ -43,6 +43,7 @@ export function serializeDeclaration(
     slideshowSeconds: row.slideshowSeconds,
     hasPassword: Boolean(row.passwordHash),
     published: row.published,
+    paid: Boolean(row.paidAt),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     lastViewedAt: toIso(row.lastViewedAt),
@@ -137,9 +138,10 @@ export function toPublicDeclaration(
   record: DeclarationRecord,
   ownerName?: string
 ): PublicDeclaration {
-  const { userId, replies, ...rest } = record;
+  const { userId, replies, paid, ...rest } = record;
   void userId;
   void replies;
+  void paid;
   return {
     ...rest,
     replyToName: ownerName || firstNameFromCouple(record.coupleName),
